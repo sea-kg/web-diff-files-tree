@@ -30,15 +30,17 @@ if ($action == 'add') {
     if ($filepath == "") {
       continue;
     }
-    $def_file_id = BaseLib::createDefineFileSafe($group_id, $filepath);
-    if ($def_file_id == -1) {
-      $response['error'] = 'could not create define file safe';
-      continue;
+    $paths = explode("/", $filepath);
+    $path = '';
+    $parentid = 0;
+    foreach($paths as $val) {
+      if ($val == '') {
+        continue;
+      }
+      $path .= '/'.$val;
+      $parentid = BaseLib::createDefineFileSafe($group_id, $path, $parentid);
+      BaseLib::createFileSafe($version_id, $parentid);
     }
-
-    $response[$filepath] = BaseLib::createFileSafe($version_id, $def_file_id);
-    // $def_file_id
-    # $version_id = BaseLib::createVersionSafe($version);
   }
 }
 
@@ -46,14 +48,17 @@ if ($action == 'loadtree') {
   $load = $request['load'];
   $byid = $request['byid'];
   $response['load'] = $load;
-  $response['byid'] = intval($byid);
+  $response['byid'] = $byid;
   $response['list'] = array();
+  if ($load == 'version') {
+  }
   if ($load == 'groups') {
     $stmt = $conn->prepare("
-      SELECT DISTINCT version_id, deff.file_group_id as child_id, `name` as title FROM `webdiff_files`
+      SELECT version_id, deff.file_group_id as child_id, `name` as title, COUNT(*) as count_childs FROM webdiff_files
       INNER JOIN webdiff_define_files deff ON deff.id = define_file_id
       INNER JOIN webdiff_file_groups grs ON grs.id = deff.file_group_id
       WHERE version_id = ?
+      GROUP BY version_id, child_id, title
       "
     );
     $stmt->execute(array($byid));
@@ -61,6 +66,7 @@ if ($action == 'loadtree') {
       $response['list'][] = array(
         'child_id' => intval($row['child_id']),
         'title' => $row['title'],
+        'count_childs' => $row['count_childs'],
       );
     }
   }
@@ -68,17 +74,27 @@ if ($action == 'loadtree') {
     $byid = $request['byid'];
     $version_id = intval(explode(":",$byid)[0]);
     $group_id = intval(explode(":",$byid)[1]);
+    $parent_id = intval(explode(":",$byid)[2]);
     $stmt = $conn->prepare("
-      SELECT webdiff_files.id as child_id, filepath as title FROM `webdiff_files`
-      INNER JOIN webdiff_define_files deff ON deff.id = define_file_id
-      WHERE version_id = ? AND deff.file_group_id = ?
+      SELECT
+        t0.id as uniq_id,
+        deff.id as child_id,
+        filepath as title,
+        deff.childs as count_childs
+      FROM `webdiff_files` AS t0
+      INNER JOIN
+        webdiff_define_files deff ON deff.id = define_file_id
+      WHERE
+        version_id = ? AND deff.file_group_id = ? AND parent_id = ?
       "
     );
-    $stmt->execute(array($version_id, $group_id));
+    $stmt->execute(array($version_id, $group_id, $parent_id));
     while ($row = $stmt->fetch()) {
       $response['list'][] = array(
+        'uniq_id' => intval($row['uniq_id']),
         'child_id' => intval($row['child_id']),
         'title' => $row['title'],
+        'count_childs' => $row['count_childs'],
       );
     }
   }

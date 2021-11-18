@@ -27,19 +27,13 @@ body {
           <div class="collapse navbar-collapse" id="navbarSupportedContent">
             <ul class="navbar-nav mr-auto">
               <li class="nav-item active">
-                <a class="nav-link" href="index.php">Diff</a>
-              </li>
-              <li class="nav-item active">
-                <a class="nav-link" href="versions.php">Versions</a>
-              </li>
-              <li class="nav-item active">
-                <a class="nav-link" href="groups.php">Groups</a>
-              </li>
-              <li class="nav-item active">
                 <a class="nav-link" href="browser.php">Browser</a>
               </li>
               <li class="nav-item active">
-                <a class="nav-link" href="api.php">Api</a>
+                <a class="nav-link" href="index.php">Diff</a>
+              </li>
+              <li class="nav-item active">
+                <a class="nav-link" href="groups.php">Groups</a>
               </li>
             </ul>
           </div>

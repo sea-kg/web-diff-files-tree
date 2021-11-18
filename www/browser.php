@@ -3,7 +3,7 @@
       include_once("head.php");
 ?>
       <div class="container">
-      <h1>Registered versions</h1>
+      <h1>Browser</h1>
         <?php
         $conn = BaseLib::dbConn();
 
@@ -31,11 +31,6 @@
             }
             var load = subel.attr('load');
             var byid = subel.attr('byid');
-
-            console.log(elid);
-            console.log(load);
-            console.log(byid);
-            console.log(el);
             $.ajax({
               url: "./api/",
               type: 'post',
@@ -47,11 +42,21 @@
               var _subhtml = '';
               var load1 = result['load'];
               var byid1 = result['byid'];
+              
+              
               for(var i in result['list']) {
                 var item = result['list'][i];
-                var _elid = load1 + item['child_id'];
+                var _uniq_id = result['uniq_id'];
+                var _elid = load1 + item['child_id'] + "_" + _uniq_id;
+                var _count_childs = item['count_childs'];
+                var img_name = load1;
+                if (img_name == 'files' && _count_childs == 0) {
+                  img_name = 'file'
+                } else if (img_name == 'files' && _count_childs > 0) {
+                  img_name = 'directory'
+                }
                 _subhtml += '<div class="treeitem">';
-                _subhtml += '<div class="treeitemname" toggleid="' + _elid + '"><img width=25px height=25px src="./images/' + load1 + '.svg">' + item['title'] + '</div>'
+                _subhtml += '<div class="treeitemname" toggleid="' + _elid + '"><img width=25px height=25px src="./images/' + img_name + '.svg">' + item['title'] + ' (' + _count_childs + ')</div>'
                 _subhtml += '<div class="subtree" id="' + _elid + '" load="files" byid="' + byid1 + ':' + item['child_id'] + '"></div>'
                 _subhtml += '</div>';
               }
