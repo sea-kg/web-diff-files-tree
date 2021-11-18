@@ -43,11 +43,11 @@ for _zip_filename in files:
         _reg_file = remove_first_folder(_reg_file)
         data_request['files'].append(_reg_file)
         if len(data_request['files']) > 499:
+            print("Uploading " + str(len(data_request['files'])) + "....")
             r = requests.post(BASEURL + '/api/', json = data_request)
             _uploaded += len(data_request['files'])
             print("Uploaded " + str(_uploaded) + "/" + str(_all))
             data_request['files'] = []
-    print("post files 100")
     if len(data_request['files']) > 0:
         r = requests.post(BASEURL + '/api/', json = data_request)
         _uploaded += len(data_request['files'])

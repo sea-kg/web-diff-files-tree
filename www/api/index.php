@@ -38,7 +38,7 @@ if ($action == 'add') {
         continue;
       }
       $path .= '/'.$val;
-      $parentid = BaseLib::createDefineFileSafe($group_id, $path, $parentid);
+      $parentid = BaseLib::createDefineFileSafe($group_id, $path, $val, $parentid);
       BaseLib::createFileSafe($version_id, $parentid);
     }
   }
@@ -64,6 +64,7 @@ if ($action == 'loadtree') {
     $stmt->execute(array($byid));
     while ($row = $stmt->fetch()) {
       $response['list'][] = array(
+        'uniq_id' => $byid,
         'child_id' => intval($row['child_id']),
         'title' => $row['title'],
         'count_childs' => $row['count_childs'],
@@ -79,13 +80,14 @@ if ($action == 'loadtree') {
       SELECT
         t0.id as uniq_id,
         deff.id as child_id,
-        filepath as title,
+        `filename` as title,
         deff.childs as count_childs
       FROM `webdiff_files` AS t0
       INNER JOIN
         webdiff_define_files deff ON deff.id = define_file_id
       WHERE
         version_id = ? AND deff.file_group_id = ? AND parent_id = ?
+      ORDER BY deff.childs DESC, title
       "
     );
     $stmt->execute(array($version_id, $group_id, $parent_id));

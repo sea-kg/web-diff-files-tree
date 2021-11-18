@@ -42,11 +42,15 @@
               var _subhtml = '';
               var load1 = result['load'];
               var byid1 = result['byid'];
-              
+              if (byid1.split(":").length > 2) {
+                byid1 = byid1.split(":");
+                byid1.pop();
+                byid1 = byid1.join(":");
+              }
               
               for(var i in result['list']) {
                 var item = result['list'][i];
-                var _uniq_id = result['uniq_id'];
+                var _uniq_id = item['uniq_id'];
                 var _elid = load1 + item['child_id'] + "_" + _uniq_id;
                 var _count_childs = item['count_childs'];
                 var img_name = load1;
@@ -56,7 +60,7 @@
                   img_name = 'directory'
                 }
                 _subhtml += '<div class="treeitem">';
-                _subhtml += '<div class="treeitemname" toggleid="' + _elid + '"><img width=25px height=25px src="./images/' + img_name + '.svg">' + item['title'] + ' (' + _count_childs + ')</div>'
+                _subhtml += '<div class="treeitemname" toggleid="' + _elid + '"><img width=25px height=25px src="./images/' + img_name + '.svg">' + item['title'] + '</div>'
                 _subhtml += '<div class="subtree" id="' + _elid + '" load="files" byid="' + byid1 + ':' + item['child_id'] + '"></div>'
                 _subhtml += '</div>';
               }
