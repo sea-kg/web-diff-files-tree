@@ -1,0 +1,16 @@
+
+.treeitem {
+
+}
+
+.treeitemname {
+    cursor: pointer;
+}
+
+.treeitemname:hover {
+    background-color: lightblue;
+}
+
+.subtree {
+    padding-left: 25px;
+}
