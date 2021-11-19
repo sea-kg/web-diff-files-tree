@@ -15,8 +15,22 @@
 .plus {
     display: inline-block;
     cursor: pointer;
-    background-size: 25px 25px;
+    background-size: 15px 15px;
+    background-position: center center;
     background-image: url(../images/plus.svg);
+    background-repeat: no-repeat;
+    height: 25px;
+    width: 25px;
+    content: " ";
+    vertical-align: top;
+}
+
+.subfile {
+    display: inline-block;
+    background-size: 15px 15px;
+    background-position: center center;
+    background-image: url(../images/subfile.svg);
+    background-repeat: no-repeat;
     height: 25px;
     width: 25px;
     content: " ";
@@ -25,4 +39,22 @@
 
 .plus.opened {
     background-image: url(../images/minus.svg);
+}
+
+.state {
+    display: inline-block;
+    font-size: small;
+    margin-left: 10px;
+    padding: 2px;
+    padding-left: 5px;
+    padding-right: 5px;
+    border-radius: 5px;
+}
+
+.state.missing {
+    background-color: red;
+}
+
+.state.new {
+    background-color: lightblue;
 }

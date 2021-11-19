@@ -9,6 +9,7 @@
   $options_right_version = '';
   $left_version = -1;
   $left_version_name = "";
+  $right_version_name = "";
   $right_version = -1;
   if (isset($_GET['left_version']) && isset($_GET['right_version'])) {
     $left_version = $_GET['left_version'];
@@ -49,38 +50,84 @@
         <input type="hidden" name="right_version" value="-1"/>
         <button class="btn btn-primary" type="submit">Other comparation</button>
       </form>
+      <div id="diff_content">
+
+      </div>
+
+      <?php
+        echo '<script>
+          var left_version_id = '.$left_version.';
+          var right_version_id = '.$right_version.';
+          var left_version_name = "'.$left_version_name.'";
+          var right_version_name = "'.$right_version_name.'";
+        </script>
+        ';
+      ?>
+      <script>
+
+        function createsubtree(files, startid) {
+          var _subhtml = '';
+          for (var fid in files) {
+            var fileinfo = files[fid];
+            if (fileinfo['parent'] == startid) {
+              var amount_of_children = fileinfo['amount_of_children'];
+              var img_name = amount_of_children > 0 ? 'directory.svg' : 'file.svg';
+
+              var _elid = 'file_' + fid;
+              _subhtml += '<div class="treeitem">';
+              _subhtml += '<div class="treeitemname">';
+              if (amount_of_children > 0) {
+                _subhtml += '<div class="itemfiles plus" toggleid="' + _elid + '"></div>';  
+              } else {
+                _subhtml += '<div class="subfile"></div>';  
+              }
+              _subhtml += '<img width=25px height=25px src="./images/' + img_name + '">' + fileinfo['filename'];
+              if (fileinfo['state'] == 'new') {
+                _subhtml += '<div class="state new">NEW in ' + right_version_name + ', but not found in ' + left_version_name + ' </div>';
+              } else if (fileinfo['state'] == 'missing') {
+                _subhtml += '<div class="state missing">MISSING in ' + right_version_name + ', but exists in ' + left_version_name + ' </div>';
+              }
+              
+              _subhtml += '</div>';
+              _subhtml += '<div class="subtree" id="' + _elid + '">' + createsubtree(files, fid) + '</div>';
+              _subhtml += '</div>';
+            }
+          }
+          return _subhtml
+        }
+
+        function loadDiff() {
+          $.ajax({ url: "./api/diff/", type: 'post', cache: false, dataType: 'json',
+            data: JSON.stringify( { "left_version_id": left_version_id, "right_version_id": right_version_id, } ),
+            async:true,
+          }).fail(function(error) {
+            console.log(error);
+          }).done(function(result) {
+            document.diff_result = result;
+            console.log(result);
+            var groups = result['groups'];
+            var content = $('#diff_content');
+            content.append('<h1>Result of comparation</h1>');
+            for (var groupid in groups) {
+              var _elid = 'group' + groupid;
+              var group = groups[groupid];
+              content.append(''
+                + '<div class="treeitem">'
+                + '<div class="treeitemname">'
+                + '<div class="itemfiles plus" toggleid="' + _elid + '"></div>'
+                + '<img width=25px height=25px src="./images/group.svg">' + group['title'] + ' (new files: ' + group['new']  + ', missing files: ' + group['missing'] + ')'
+                + '</div>'
+                + '<div class="subtree" id="' + _elid + '">' + createsubtree(group['files'], 'id0') + '</div>'
+                + '</div>'
+              );
+            }
+          })
+        }
+        loadDiff();
+      </script>
+
+
     <?php
-      $conn = BaseLib::dbConn();
-      // SELECT * FROM webdiff_files WHERE version_id = 4 AND define_file_id NOT IN (SELECT define_file_id FROM webdiff_files WHERE version_id = 5);
-      echo "<h2>Missing files in #".$right_version_name.", but exists in ".$left_version_name."</h2>";
-      $stmt = $conn->prepare('
-        SELECT * FROM webdiff_files
-        INNER JOIN webdiff_define_files t1 ON t1.id = define_file_id
-        INNER JOIN webdiff_file_groups t2 ON t2.id = file_group_id
-        WHERE version_id = ? AND define_file_id NOT IN (SELECT define_file_id FROM webdiff_files WHERE version_id = ?);');
-      $stmt->execute(array($left_version, $right_version));
-      while ($row = $stmt->fetch()) {
-          $define_file_id = $row['define_file_id'];
-          $filepath = $row['filepath'];
-          echo "#".$define_file_id." ".$filepath." <br>";
-          // print_r($row);
-          // echo $define_file_id;
-      }
-
-      echo "<h2>New files in #".$right_version_name." and not exists in ".$left_version_name."</h2>";
-      $stmt = $conn->prepare('
-        SELECT * FROM webdiff_files
-        INNER JOIN webdiff_define_files t1 ON t1.id = define_file_id
-        WHERE version_id = ? AND define_file_id NOT IN (SELECT define_file_id FROM webdiff_files WHERE version_id = ?);');
-      $stmt->execute(array($right_version, $left_version));
-      while ($row = $stmt->fetch()) {
-          $define_file_id = $row['define_file_id'];
-          $filepath = $row['filepath'];
-          echo "#".$define_file_id." ".$filepath." <br>";
-          // print_r($row);
-          // echo $define_file_id;
-      }
-
       // if selected versions
       } ?>
   </div>

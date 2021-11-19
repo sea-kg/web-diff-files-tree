@@ -90,6 +90,8 @@
                   _subhtml += '<div class="treeitemname">';
                   if (amount_of_children > 0) {
                     _subhtml += '<div class="itemfiles plus" toggleid="' + _elid + '"></div>';  
+                  } else {
+                    _subhtml += '<div class="subfile"></div>';  
                   }
                   _subhtml += '<img width=25px height=25px src="./images/' + img_name + '">' + item['title'];
                   _subhtml += '</div>';
