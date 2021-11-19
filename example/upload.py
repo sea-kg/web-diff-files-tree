@@ -7,8 +7,8 @@ import sys
 import re
 import requests
 
-BASEURL = "http://localhost:8071/"
-# BASEURL = "http://localhost/webdiff/api/"
+# BASEURL = "http://localhost:8071/"
+BASEURL = "http://localhost/webdiff/"
 
 def get_group_and_version(_zip_filename):
     _zip_filename = _zip_filename[:-4] # remove '.zip'
@@ -32,7 +32,6 @@ for _zip_filename in files:
     if not _zip_filename.endswith(".zip"):
         continue
     data_request = {}
-    data_request['action'] = 'add'
     (group, version) = get_group_and_version(_zip_filename)
     data_request['group'] = group
     data_request['version'] = version
@@ -49,14 +48,14 @@ for _zip_filename in files:
         data_request['files'].append(_reg_file)
         if len(data_request['files']) > 499:
             print("Uploading " + str(len(data_request['files'])) + "....")
-            r = requests.post(BASEURL + '/api/', json = data_request)
+            r = requests.post(BASEURL + '/api/add/', json = data_request)
             if r.status_code != 200:
                 sys.exit("Could not post")
             _uploaded += len(data_request['files'])
             print("Uploaded " + str(_uploaded) + "/" + str(_all))
             data_request['files'] = []
     if len(data_request['files']) > 0:
-        r = requests.post(BASEURL + '/api/', json = data_request)
+        r = requests.post(BASEURL + '/api/add/', json = data_request)
         if r.status_code != 200:
             sys.exit("Could not post")
         _uploaded += len(data_request['files'])

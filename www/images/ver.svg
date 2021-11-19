@@ -25,9 +25,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="11.2"
-     inkscape:cx="35.727505"
-     inkscape:cy="16.732169"
+     inkscape:zoom="15.839192"
+     inkscape:cx="37.836672"
+     inkscape:cy="13.193321"
      inkscape:document-units="mm"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -57,8 +57,9 @@
      transform="translate(0,-283.77082)">
     <path
        style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.23212825px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       d="m 3.9720467,287.95519 1.7146524,5.19479 1.2859894,0.036 2.0480569,-5.44733 -1.3812476,-0.1443 -1.2859894,4.0404 -1.4288771,-4.11255 z"
+       d="m 3.1452238,284.62427 -1.257128,2.1946 0.7516322,0.0286 -0.019919,7.9084 -1.1594559,0.94487 1.1552896,0.70924 1.2387424,-0.0112 1.3682337,-0.81612 -1.3719064,-0.82681 -0.0043,-1.92196 4.6714722,-2.03731 0.030387,-1.42791 1.2919037,-0.0299 -0.00599,-1.9902 -3.5624044,-0.11479 -0.084376,2.03181 1.2855334,0.10454 -0.099471,0.99596 -3.6185528,1.41037 -0.1351031,-4.93352 0.7536319,-0.0249 z"
        id="path815"
-       inkscape:connector-curvature="0" />
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cccccccccccccccccccccc" />
   </g>
 </svg>

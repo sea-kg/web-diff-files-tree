@@ -113,43 +113,45 @@ class BaseLib {
     return $ret;
   }
 
-  static function createDefineFileSafe($groupid, $filepath, $filename, $parent_id) {
+  static function createDefineFileSafe($filepath, $filename, $parentid) {
     $conn = BaseLib::dbConn();
-    $stmt_find = $conn->prepare('SELECT id FROM webdiff_define_files WHERE file_group_id = ? AND filepath = ? AND parent_id = ?;');
-    $stmt_find->execute(array($groupid, $filepath, $parent_id));
+    $stmt_find = $conn->prepare('SELECT id FROM webdiff_define_files WHERE filepath = ? AND parent_id = ?;');
+    $stmt_find->execute(array($filepath, $parentid));
     $ret = -1;
     if ($row = $stmt_find->fetch()) {
-      $ret = $row['id'];
+      $ret = $row['id']; // already exists
     } else {
-      $stmt_insert = $conn->prepare('INSERT INTO webdiff_define_files(file_group_id, filepath, `filename`, parent_id) VALUES(?,?,?,?);');
-      if ($stmt_insert->execute(array($groupid, $filepath, $filename, $parent_id))) {
-        $ret =  $conn->lastInsertId();
-      }
-      // SELECT COUNT(*) FROM webdiff_define_files t1 WHERE t1.parent_id = 9120 
-
-      $stmt_update_childs = $conn->prepare('UPDATE webdiff_define_files AS t0 SET t0.childs = t0.childs+1 WHERE id = ?;');
-      $stmt_update_childs->execute(array($parent_id));
-
-    }
-    return $ret;
-  }
-
-  static function createFileSafe($version_id, $def_file_id) {
-    $conn = BaseLib::dbConn();
-    $stmt_find = $conn->prepare('SELECT id FROM webdiff_files WHERE version_id = ? AND define_file_id = ?;');
-    $stmt_find->execute(array($version_id, $def_file_id));
-    $ret = -1;
-    if ($row = $stmt_find->fetch()) {
-      $ret = $row['id'];
-    } else {
-      $stmt_insert = $conn->prepare('INSERT INTO webdiff_files(version_id, define_file_id) VALUES(?,?);');
-      if ($stmt_insert->execute(array($version_id, $def_file_id))) {
-        $ret =  $conn->lastInsertId();
+      $stmt_insert = $conn->prepare('INSERT INTO webdiff_define_files(filepath, `filename`, parent_id) VALUES(?,?,?);');
+      if ($stmt_insert->execute(array($filepath, $filename, $parentid))) {
+        $ret = $conn->lastInsertId();
       }
     }
     return $ret;
   }
 
+  static function createFileSafe($version_id, $group_id, $def_file_id, $file_parent_id) {
+    $conn = BaseLib::dbConn();
+    $stmt_find = $conn->prepare('SELECT id FROM webdiff_files WHERE version_id = ? AND define_file_id = ? AND file_group_id = ? AND parent_id = ?;');
+    $stmt_find->execute(array($version_id, $def_file_id, $group_id, $file_parent_id));
+    $ret = -1;
+    if ($row = $stmt_find->fetch()) {
+      $ret = $row['id'];
+    } else {
+      $stmt_insert = $conn->prepare('INSERT INTO webdiff_files(version_id, define_file_id, file_group_id, parent_id) VALUES(?,?,?,?);');
+      if ($stmt_insert->execute(array($version_id, $def_file_id, $group_id, $file_parent_id))) {
+        $ret =  $conn->lastInsertId();
+      }
+      // update amnount of childs
+      $stmt_count = $conn->prepare('SELECT COUNT(id) as cnt FROM webdiff_files WHERE parent_id = ?');
+      $stmt_count->execute(array($file_parent_id));
+      if ($row = $stmt_count->fetch()) {
+        $cnt = $row['cnt'];
+        $stmt_update = $conn->prepare('UPDATE webdiff_files SET amount_of_children = ? WHERE id = ?');
+        $stmt_update->execute(array($cnt, $file_parent_id));
+      }
+    }
+    return $ret;
+  }
 }
 
 // load config
