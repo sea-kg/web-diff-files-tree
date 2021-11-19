@@ -27,3 +27,9 @@ $ php update_db.php
 ```
 
 
+```
+$ docker-compose up
+```
+
+http://localhost:8071/
+

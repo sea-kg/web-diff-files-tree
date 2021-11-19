@@ -1,0 +1,34 @@
+
+version: '3'
+
+services:
+  webdiff_db:
+    image: mysql:5.7
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - "./mysql_data:/var/lib/mysql"
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: KzhyntJxwt
+      MYSQL_DATABASE: webdiff
+      MYSQL_USER: webdiffu
+      MYSQL_PASSWORD: jET3E4W9vm
+    networks:
+      - webdiff_net
+
+  webdiff_server:
+    image: webdiff:server
+    build: .
+    ports:
+      - 8071:80
+    volumes:
+      - "./www/:/var/www/html/"
+    environment:
+      WEBDIFF_DB_HOST: webdiff_db
+    restart: always
+    networks:
+      - webdiff_net
+
+networks:
+  webdiff_net:
+    driver: bridge
