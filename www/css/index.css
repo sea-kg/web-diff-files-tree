@@ -1,16 +1,28 @@
 
-.treeitem {
-
-}
 
 .treeitemname {
-    cursor: pointer;
+    background-color: #ffffff;
 }
 
 .treeitemname:hover {
-    background-color: lightblue;
+    background-color: #f0f0f0;
 }
 
 .subtree {
     padding-left: 25px;
+}
+
+.plus {
+    display: inline-block;
+    cursor: pointer;
+    background-size: 25px 25px;
+    background-image: url(../images/plus.svg);
+    height: 25px;
+    width: 25px;
+    content: " ";
+    vertical-align: top;
+}
+
+.plus.opened {
+    background-image: url(../images/minus.svg);
 }

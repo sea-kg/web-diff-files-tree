@@ -56,6 +56,7 @@
       $stmt = $conn->prepare('
         SELECT * FROM webdiff_files
         INNER JOIN webdiff_define_files t1 ON t1.id = define_file_id
+        INNER JOIN webdiff_file_groups t2 ON t2.id = file_group_id
         WHERE version_id = ? AND define_file_id NOT IN (SELECT define_file_id FROM webdiff_files WHERE version_id = ?);');
       $stmt->execute(array($left_version, $right_version));
       while ($row = $stmt->fetch()) {

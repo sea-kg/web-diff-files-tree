@@ -19,7 +19,7 @@ $stmt = $conn->prepare("
       version_id,
       file_group_id,
       `name` as title,
-      COUNT(*) as count_childs
+      COUNT(*) as amount_of_files
     FROM webdiff_files
     INNER JOIN webdiff_file_groups t1 ON t1.id = file_group_id
     WHERE version_id = ?
@@ -32,7 +32,7 @@ while ($row = $stmt->fetch()) {
     'version_id' => intval($row['version_id']),
     'group_id' => intval($row['file_group_id']),
     'title' => $row['title'],
-    'count_childs' => $row['count_childs'],
+    'amount_of_files' => $row['amount_of_files'],
   );
 }
 

@@ -8,15 +8,6 @@ $response = array(
   // 'request' => $request,
 );
 
-$action = 'None';
-if ($request != null && $request['action'] != null) {
-  $action = $request['action'];
-}
-$response['action'] = $action;
-
-$conn = BaseLib::dbConn();
-
-
 header('Content-Type: application/json; charset=utf-8');
 echo json_encode($response);
 

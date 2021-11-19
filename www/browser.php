@@ -14,7 +14,9 @@
             $name = $row['name'];
             $elid = 'version_'.$verid;
             echo '<div class="treeitem">
-              <div class="treeitemname itemversions" toggleid="'.$elid.'"><img width=25px height=25px src="./images/ver.svg">'.$name.'</div>
+              <div class="treeitemname">
+                <div class="itemversions plus" toggleid="'.$elid.'"></div>
+                <img width=25px height=25px src="./images/ver.svg">'.$name.'</div>
               <div class="subtree" id="'.$elid.'" version_id="'.$verid.'"></div>
             </div>';
         }
@@ -41,10 +43,14 @@
               for(var i in result['list']) {
                 var item = result['list'][i];
                 var group_id = item['group_id'];
+                var amount_of_files = item['amount_of_files'];
                 var _elid = 'group' + version_id + '_' + group_id;
                 _subhtml += '<div class="treeitem">';
-                _subhtml += '<div class="treeitemname itemfiles" toggleid="' + _elid + '"><img width=25px height=25px src="./images/group.svg">' + item['title'] + '</div>'
-                _subhtml += '<div class="subtree" id="' + _elid + '" version_id="' + version_id + '" group_id="' + group_id + '" parent_id="0"></div>'
+                _subhtml += '<div class="treeitemname">';
+                _subhtml += '<div class="itemfiles plus" toggleid="' + _elid + '"></div>';
+                _subhtml += '<img width=25px height=25px src="./images/group.svg">' + item['title'] + ' (' + amount_of_files + ' files)';
+                _subhtml += '</div>'
+                _subhtml += '<div class="subtree" id="' + _elid + '" version_id="' + version_id + '" group_id="' + group_id + '" parent_id="0"></div>';
                 _subhtml += '</div>';
               }
               subel.html(_subhtml);
@@ -58,8 +64,10 @@
             var subel = $('#' + elid);
             if (subel.html() != "") {
               subel.html("");
+              $(this).removeClass("opened");
               return;
             }
+            $(this).addClass("opened");
             var version_id = subel.attr('version_id');
             var group_id = subel.attr('group_id');
             var parent_id = subel.attr('parent_id');
@@ -79,8 +87,13 @@
 
                   var _elid = 'group' + version_id + '_' + group_id + '_' + file_id;
                   _subhtml += '<div class="treeitem">';
-                  _subhtml += '<div class="treeitemname itemfiles" toggleid="' + _elid + '"><img width=25px height=25px src="./images/' + img_name + '">' + item['title'] + '</div>'
-                  _subhtml += '<div class="subtree" id="' + _elid + '" version_id="' + version_id + '" group_id="' + group_id + '" parent_id="' + file_id + '" ></div>'
+                  _subhtml += '<div class="treeitemname">';
+                  if (amount_of_children > 0) {
+                    _subhtml += '<div class="itemfiles plus" toggleid="' + _elid + '"></div>';  
+                  }
+                  _subhtml += '<img width=25px height=25px src="./images/' + img_name + '">' + item['title'];
+                  _subhtml += '</div>';
+                  _subhtml += '<div class="subtree" id="' + _elid + '" version_id="' + version_id + '" group_id="' + group_id + '" parent_id="' + file_id + '" ></div>';
                   _subhtml += '</div>';
                 }
                 subel.html(_subhtml);
