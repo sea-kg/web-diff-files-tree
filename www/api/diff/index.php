@@ -14,6 +14,31 @@ $conn = BaseLib::dbConn();
 $left_version_id = intval($request['left_version_id']);
 $right_version_id = intval($request['right_version_id']);
 
+function load_comments($conn, $define_file_id) {
+  $ret = array();
+
+  $stmt = $conn->prepare('
+    SELECT
+      t0.id,
+      t0.define_file_id,
+      t0.comment
+    FROM webdiff_define_files_comments t0
+    WHERE t0.define_file_id = ?;
+  ');
+  $stmt->execute(array($define_file_id));
+  while ($row = $stmt->fetch()) {
+    $comment_id = $row['id'];
+    $define_file_id = $row['define_file_id'];
+    $comment = $row['comment'];
+    $ret[] = array(
+      'id' => $comment_id,
+      'define_file_id' => $define_file_id,
+      'comment' => $comment,
+    );
+  }
+  return $ret;
+}
+
 function fill_parent_files($conn, $files, $file_id) {
   if ($file_id == 0) {
     return $files;
@@ -52,7 +77,7 @@ function fill_parent_files($conn, $files, $file_id) {
       'define_file_id' => intval($define_file_id),
       'filepath' => $filepath,
       'amount_of_children' => $amount_of_children,
-      'state' => '',
+      'state' => ''
     );
     $files = fill_parent_files($conn, $files, $file_parent_id);
   }
@@ -106,6 +131,7 @@ function get_diff_files($conn, $left_version_id, $right_version_id, $state, $res
       'filepath' => $filepath,
       'amount_of_children' => $amount_of_children,
       'state' => $state,
+      'comments' => load_comments($conn, intval($define_file_id)),
     );
     $files = array();
     $files = fill_parent_files($conn, $files, $file_parent_id);

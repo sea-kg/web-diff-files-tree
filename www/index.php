@@ -64,6 +64,20 @@
         ';
       ?>
       <script>
+        function rebindClick() {
+          // expand files
+          $('.itemfiles').unbind('click').bind('click', function(el) {
+            var elid = $(this).attr('toggleid');
+            var subel = $('#' + elid);
+            if ($(this).hasClass("opened")) {
+              $(this).removeClass("opened");
+              subel.hide();
+            } else {
+              $(this).addClass("opened");
+              subel.show();
+            }
+          })
+        }
 
         function createsubtree(files, startid) {
           var _subhtml = '';
@@ -77,13 +91,22 @@
               _subhtml += '<div class="treeitem">';
               _subhtml += '<div class="treeitemname">';
               if (amount_of_children > 0) {
-                _subhtml += '<div class="itemfiles plus" toggleid="' + _elid + '"></div>';  
+                _subhtml += '<div class="itemfiles plus opened" toggleid="' + _elid + '"></div>';  
               } else {
                 _subhtml += '<div class="subfile"></div>';  
               }
               _subhtml += '<img width=25px height=25px src="./images/' + img_name + '">' + fileinfo['filename'];
               if (fileinfo['state'] == 'new') {
                 _subhtml += '<div class="state new">NEW in ' + right_version_name + ', but not found in ' + left_version_name + ' </div>';
+                if (fileinfo['comments'].length > 0) {
+                  _subhtml += '<div class="comments">';
+                  for (var cm in fileinfo['comments']) {
+                    cm = fileinfo['comments'][cm];
+                    _subhtml += '<div class="comment">(c#' + cm['id'] + ') ' + cm['comment'] + ' </div><br>';
+                  }
+                  _subhtml += '</div>';
+                  
+                }
               } else if (fileinfo['state'] == 'missing') {
                 _subhtml += '<div class="state missing">MISSING in ' + right_version_name + ', but exists in ' + left_version_name + ' </div>';
               }
@@ -114,13 +137,14 @@
               content.append(''
                 + '<div class="treeitem">'
                 + '<div class="treeitemname">'
-                + '<div class="itemfiles plus" toggleid="' + _elid + '"></div>'
+                + '<div class="itemfiles plus opened" toggleid="' + _elid + '"></div>'
                 + '<img width=25px height=25px src="./images/group.svg">' + group['title'] + ' (new files: ' + group['new']  + ', missing files: ' + group['missing'] + ')'
                 + '</div>'
                 + '<div class="subtree" id="' + _elid + '">' + createsubtree(group['files'], 'id0') + '</div>'
                 + '</div>'
               );
             }
+            rebindClick();
           })
         }
         loadDiff();

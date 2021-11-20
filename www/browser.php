@@ -72,35 +72,35 @@
             var group_id = subel.attr('group_id');
             var parent_id = subel.attr('parent_id');
             $.ajax({ url: "./api/files/", type: 'post', cache: false, dataType: 'json',
-                data: JSON.stringify( { "version_id": version_id, "group_id": group_id, "parent_id": parent_id } ),
-                async: true,
-              }).fail(function(error) {
-                console.log(error);
-              }).done(function(result) {
-                var _subhtml = '';
-                for(var i in result['list']) {
-                  var item = result['list'][i];
-                  var file_id = item['file_id'];
-                  var def_file_id = item['def_file_id'];
-                  var amount_of_children = item['amount_of_children'];
-                  var img_name = amount_of_children > 0 ? 'directory.svg' : 'file.svg';
+              data: JSON.stringify( { "version_id": version_id, "group_id": group_id, "parent_id": parent_id } ),
+              async: true,
+            }).fail(function(error) {
+              console.log(error);
+            }).done(function(result) {
+              var _subhtml = '';
+              for(var i in result['list']) {
+                var item = result['list'][i];
+                var file_id = item['file_id'];
+                var def_file_id = item['def_file_id'];
+                var amount_of_children = item['amount_of_children'];
+                var img_name = amount_of_children > 0 ? 'directory.svg' : 'file.svg';
 
-                  var _elid = 'group' + version_id + '_' + group_id + '_' + file_id;
-                  _subhtml += '<div class="treeitem">';
-                  _subhtml += '<div class="treeitemname">';
-                  if (amount_of_children > 0) {
-                    _subhtml += '<div class="itemfiles plus" toggleid="' + _elid + '"></div>';  
-                  } else {
-                    _subhtml += '<div class="subfile"></div>';  
-                  }
-                  _subhtml += '<img width=25px height=25px src="./images/' + img_name + '">' + item['title'];
-                  _subhtml += '</div>';
-                  _subhtml += '<div class="subtree" id="' + _elid + '" version_id="' + version_id + '" group_id="' + group_id + '" parent_id="' + file_id + '" ></div>';
-                  _subhtml += '</div>';
+                var _elid = 'group' + version_id + '_' + group_id + '_' + file_id;
+                _subhtml += '<div class="treeitem">';
+                _subhtml += '<div class="treeitemname">';
+                if (amount_of_children > 0) {
+                  _subhtml += '<div class="itemfiles plus" toggleid="' + _elid + '"></div>';  
+                } else {
+                  _subhtml += '<div class="subfile"></div>';  
                 }
-                subel.html(_subhtml);
-                rebindClick();
-              })
+                _subhtml += '<img width=25px height=25px src="./images/' + img_name + '">' + item['title'];
+                _subhtml += '</div>';
+                _subhtml += '<div class="subtree" id="' + _elid + '" version_id="' + version_id + '" group_id="' + group_id + '" parent_id="' + file_id + '" ></div>';
+                _subhtml += '</div>';
+              }
+              subel.html(_subhtml);
+              rebindClick();
+            })
           })
         }
         rebindClick();

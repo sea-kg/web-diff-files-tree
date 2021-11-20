@@ -58,3 +58,16 @@
 .state.new {
     background-color: lightblue;
 }
+
+.comments {
+    padding-left: 100px;
+    font-size: small;
+}
+
+.comments .comment {
+    display: inline-block;
+    font-size: small;
+    margin-bottom: 2px;
+    padding: 2px;
+    border: 1px solid lightblue;
+}
