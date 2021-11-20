@@ -69,5 +69,41 @@
     font-size: small;
     margin-bottom: 2px;
     padding: 2px;
+    padding-left: 10px;
+    padding-right: 10px;
+    background-color: #CCC;
     border: 1px solid lightblue;
+    border-radius: 50px;
+}
+
+.comment-add {
+    display: inline-block;
+    cursor: pointer;
+    background-size: 25px 25px;
+    background-position: center center;
+    background-image: url(../images/add_comment.svg);
+    background-repeat: no-repeat;
+    height: 25px;
+    width: 25px;
+    content: " ";
+    vertical-align: top;
+    margin-left: 10px;
+}
+
+.file-check {
+    display: inline-block;
+    cursor: pointer;
+    background-size: 25px 25px;
+    background-position: center center;
+    background-image: url(../images/check.svg);
+    background-repeat: no-repeat;
+    height: 25px;
+    width: 25px;
+    content: " ";
+    vertical-align: top;
+    margin-left: 10px;
+}
+
+.file-check:hover, .comment-add:hover {
+    background-color: #666;
 }

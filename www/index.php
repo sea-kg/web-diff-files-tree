@@ -77,6 +77,25 @@
               subel.show();
             }
           })
+
+
+          $('.comment-add').unbind('click').bind('click', function(el) {
+            var define_file_id = $(this).attr('define_file_id');
+            var comment = prompt("New comment:");
+            
+            if (comment) {
+              $.ajax({ url: "./api/comment-add/", type: 'post', cache: false, dataType: 'json',
+                data: JSON.stringify( { "define_file_id": define_file_id, "comment": comment, } ),
+                async:true,
+              }).fail(function(error) {
+                console.log(error);
+              }).done(function(result) {
+                $('.comments[define_file_id=' + define_file_id + ']').prepend(
+                  '<div class="comment">(c#' + result['id'] + ') ' + result['comment'] + ' </div><br>'
+                )
+              })
+            }
+          })
         }
 
         function createsubtree(files, startid) {
@@ -85,8 +104,9 @@
             var fileinfo = files[fid];
             if (fileinfo['parent'] == startid) {
               var amount_of_children = fileinfo['amount_of_children'];
+              var define_file_id = fileinfo['define_file_id'];
               var img_name = amount_of_children > 0 ? 'directory.svg' : 'file.svg';
-
+              
               var _elid = 'file_' + fid;
               _subhtml += '<div class="treeitem">';
               _subhtml += '<div class="treeitemname">';
@@ -98,19 +118,22 @@
               _subhtml += '<img width=25px height=25px src="./images/' + img_name + '">' + fileinfo['filename'];
               if (fileinfo['state'] == 'new') {
                 _subhtml += '<div class="state new">NEW in ' + right_version_name + ', but not found in ' + left_version_name + ' </div>';
-                if (fileinfo['comments'].length > 0) {
-                  _subhtml += '<div class="comments">';
-                  for (var cm in fileinfo['comments']) {
-                    cm = fileinfo['comments'][cm];
-                    _subhtml += '<div class="comment">(c#' + cm['id'] + ') ' + cm['comment'] + ' </div><br>';
-                  }
-                  _subhtml += '</div>';
-                  
-                }
+                _subhtml += '<div class="comment-add" define_file_id="' + define_file_id + '" ></div>'
+                _subhtml += '<div class="file-check" file_id="' + fid + '" ></div>'
               } else if (fileinfo['state'] == 'missing') {
                 _subhtml += '<div class="state missing">MISSING in ' + right_version_name + ', but exists in ' + left_version_name + ' </div>';
+                _subhtml += '<div class="comment-add" define_file_id="' + define_file_id + '" ></div>'
+                _subhtml += '<div class="file-check" file_id="' + fid + '" ></div>'
               }
-              
+              _subhtml += '<div class="comments" define_file_id="' + define_file_id + '">';
+              if (fileinfo['comments'] && fileinfo['comments'].length > 0) {
+                for (var cm in fileinfo['comments']) {
+                  cm = fileinfo['comments'][cm];
+                  _subhtml += '<div class="comment">(c#' + cm['id'] + ') ' + cm['comment'] + ' </div><br>';
+                }
+              }
+              _subhtml += '</div>';
+
               _subhtml += '</div>';
               _subhtml += '<div class="subtree" id="' + _elid + '">' + createsubtree(files, fid) + '</div>';
               _subhtml += '</div>';
