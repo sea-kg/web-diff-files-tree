@@ -23,7 +23,7 @@ function load_comments($conn, $define_file_id) {
       t0.define_file_id,
       t0.comment
     FROM webdiff_define_files_comments t0
-    WHERE t0.define_file_id = ?
+    WHERE t0.define_file_id = ? AND hided = 0
     ORDER BY dt_created DESC
   ;
   ');

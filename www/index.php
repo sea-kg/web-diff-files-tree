@@ -91,10 +91,31 @@
                 console.log(error);
               }).done(function(result) {
                 $('.comments[define_file_id=' + define_file_id + ']').prepend(
-                  '<div class="comment">(c#' + result['id'] + ') ' + result['comment'] + ' </div><br>'
+                  '<div class="comment" comment_id="' + result['id'] + '">'
+                  + '<div class="comment-text">(c#' + result['id'] + ') ' + result['comment'] + '</div>'
+                  + '<div class="comment-hide" comment_id="' + result['id'] + '"></div>'
+                  + '</div>'
                 )
               })
+              rebindClick();
             }
+          })
+
+          $('.comment-hide').unbind('click').bind('click', function(el) {
+            var comment_id = $(this).attr('comment_id');
+            // var comment = prompt("New comment:");
+            
+            // if (comment) {
+              $.ajax({ url: "./api/comment-hide/", type: 'post', cache: false, dataType: 'json',
+                data: JSON.stringify( { "comment_id": comment_id } ),
+                async:true,
+              }).fail(function(error) {
+                console.log(error);
+              }).done(function(result) {
+                $('.comment[comment_id=' + comment_id + ']').remove();
+              })
+              rebindClick();
+            // }
           })
         }
 
@@ -129,7 +150,10 @@
               if (fileinfo['comments'] && fileinfo['comments'].length > 0) {
                 for (var cm in fileinfo['comments']) {
                   cm = fileinfo['comments'][cm];
-                  _subhtml += '<div class="comment">(c#' + cm['id'] + ') ' + cm['comment'] + ' </div><br>';
+                  _subhtml += '<div class="comment" comment_id="' + cm['id'] + '">'
+                    + '<div class="comment-text">(c#' + cm['id'] + ') ' + cm['comment'] + '</div>'
+                    + '<div class="comment-hide" comment_id="' + cm['id'] + '"></div>'
+                    + '</div>';
                 }
               }
               _subhtml += '</div>';
