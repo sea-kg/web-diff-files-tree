@@ -1,6 +1,9 @@
-# webdiff
+# web-diff-files-tree
 
-For control of changing list files between zip-files (updating via api)
+Service which allowed loading filepaths by api. 
+After this you can compare different `version` and set comment to files.
+
+![screen](screen.jpg)
 
 ## Database creation 
 
@@ -25,7 +28,6 @@ Edit `www/conf.d/config.php` for set correct credentials:
 $ cd www
 $ php update_db.php
 ```
-
 
 ```
 $ docker-compose up
