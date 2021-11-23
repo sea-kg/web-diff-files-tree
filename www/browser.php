@@ -33,7 +33,7 @@ body {
                 <a class="nav-link" href="index.php">Diff</a>
               </li>
               <li class="nav-item active">
-                <a class="nav-link" href="groups.php">Groups</a>
+                <a class="nav-link" href="groups.html">Groups</a>
               </li>
             </ul>
           </div>
