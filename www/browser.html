@@ -18,50 +18,31 @@ body {
     <title>web-diff-files-tree</title>
   </head>
   <body>
-      <nav class="navbar navbar-expand-lg navbar-light bg-light">
-          <a class="navbar-brand" href="#">web-diff-files-tree</a>
-          <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-          </button>
-        
-          <div class="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul class="navbar-nav mr-auto">
-              <li class="nav-item active">
-                <a class="nav-link" href="browser.php">Browser</a>
-              </li>
-              <li class="nav-item active">
-                <a class="nav-link" href="index.php">Diff</a>
-              </li>
-              <li class="nav-item active">
-                <a class="nav-link" href="groups.html">Groups</a>
-              </li>
-            </ul>
-          </div>
-        </nav>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <a class="navbar-brand" href="#">web-diff-files-tree</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+      
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+          <ul class="navbar-nav mr-auto">
+            <li class="nav-item active">
+              <a class="nav-link" href="browser.html">Browser</a>
+            </li>
+            <li class="nav-item active">
+              <a class="nav-link" href="index.php">Diff</a>
+            </li>
+            <li class="nav-item active">
+              <a class="nav-link" href="groups.html">Groups</a>
+            </li>
+          </ul>
+        </div>
+      </nav>
 
-<?php
-      include_once("base_lib.php"); 
-?>
-      <div class="container">
+    <div class="container">
       <h1>Browser</h1>
-        <?php
-        $conn = BaseLib::dbConn();
-
-        $stmt = $conn->prepare('SELECT * FROM webdiff_versions ORDER BY `name`');
-        $stmt->execute(array());
-        while ($row = $stmt->fetch()) {
-            $verid = $row['id'];
-            $name = $row['name'];
-            $elid = 'version_'.$verid;
-            echo '<div class="treeitem">
-              <div class="treeitemname">
-                <div class="itemversions plus" toggleid="'.$elid.'"></div>
-                <img width=25px height=25px src="./images/ver.svg">'.$name.'</div>
-              <div class="subtree" id="'.$elid.'" version_id="'.$verid.'"></div>
-            </div>';
-        }
-    ?>
-      </div>
+      <div id="versions"></div>
+    </div> <!-- container -->
       <script>
         function rebindClick() {
           // expand versions
@@ -143,7 +124,29 @@ body {
             })
           })
         }
-        rebindClick();
+
+        $('#versions').html('');
+        $.ajax({ url: "./api/versions-all/", type: 'post', cache: false, dataType: 'json',
+          data: JSON.stringify( { } ),
+          async: true,
+        }).fail(function(error) {
+          console.log(error);
+        }).done(function(result) {
+          var _subhtml = '';
+          for(var i in result['list']) {
+            var item = result['list'][i];
+            var elid = 'version_' + item['version_id'];
+            $('#versions').append(''
+              + '<div class="treeitem">'
+              + '  <div class="treeitemname">'
+              + '    <div class="itemversions plus" toggleid="' + elid + '"></div>'
+              + '    <img width=25px height=25px src="./images/ver.svg">' + item['name'] + '</div>'
+              + '  <div class="subtree" id="' + elid + '" version_id="' + item['version_id'] + '"></div>'
+              + '</div>'
+            );
+          }
+          rebindClick();
+        })
       </script>
   </body>
 </html>
