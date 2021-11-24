@@ -1,3 +1,6 @@
 
 *.zip1
-www/admin
+/html/admin
+/tmp
+/web-diff-files-tree
+/libhv.*.log
