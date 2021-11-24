@@ -48,6 +48,7 @@ public:
         tls = false;
         connect_timeout = 5000;
         enable_reconnect = false;
+        enable_unpack = false;
     }
 
     virtual ~TcpClientTmpl() {
@@ -66,7 +67,6 @@ public:
         }
         return createsocket(&peeraddr.sa);
     }
-
     int createsocket(struct sockaddr* peeraddr) {
         int connfd = socket(peeraddr->sa_family, SOCK_STREAM, 0);
         // SOCKADDR_PRINT(peeraddr);
@@ -81,6 +81,12 @@ public:
         channel.reset(new TSocketChannel(io));
         return connfd;
     }
+    void closesocket() {
+        if (channel) {
+            channel->close();
+            channel = NULL;
+        }
+    }
 
     int startConnect() {
         assert(channel != NULL);
@@ -91,6 +97,9 @@ public:
             channel->setConnectTimeout(connect_timeout);
         }
         channel->onconnect = [this]() {
+            if (enable_unpack) {
+                channel->setUnpack(&unpack_setting);
+            }
             channel->startRead();
             if (onConnection) {
                 onConnection(channel);
@@ -153,16 +162,36 @@ public:
         loop_thread.stop(wait_threads_stopped);
     }
 
-    int withTLS(const char* cert_file = NULL, const char* key_file = NULL) {
-        tls = true;
+    bool isConnected() {
+        if (channel == NULL) return false;
+        return channel->isConnected();
+    }
+
+    int send(const void* data, int size) {
+        if (!isConnected()) return -1;
+        return channel->write(data, size);
+    }
+    int send(Buffer* buf) {
+        return send(buf->data(), buf->size());
+    }
+    int send(const std::string& str) {
+        return send(str.data(), str.size());
+    }
+
+    int withTLS(const char* cert_file = NULL, const char* key_file = NULL, bool verify_peer = false) {
         if (cert_file) {
             hssl_ctx_init_param_t param;
             memset(&param, 0, sizeof(param));
             param.crt_file = cert_file;
             param.key_file = key_file;
-            param.endpoint = 1;
-            return hssl_ctx_init(&param) == NULL ? -1 : 0;
+            param.verify_peer = verify_peer ? 1 : 0;
+            param.endpoint = HSSL_CLIENT;
+            if (hssl_ctx_init(&param) == NULL) {
+                fprintf(stderr, "hssl_ctx_init failed!\n");
+                return -1;
+            }
         }
+        tls = true;
         return 0;
     }
 
@@ -171,8 +200,21 @@ public:
     }
 
     void setReconnect(ReconnectInfo* info) {
-        enable_reconnect = true;
-        reconnect_info = *info;
+        if (info) {
+            enable_reconnect = true;
+            reconnect_info = *info;
+        } else {
+            enable_reconnect = false;
+        }
+    }
+
+    void setUnpack(unpack_setting_t* setting) {
+        if (setting) {
+            enable_unpack = true;
+            unpack_setting = *setting;
+        } else {
+            enable_unpack = false;
+        }
     }
 
 public:
@@ -183,11 +225,14 @@ public:
     int                     connect_timeout;
     bool                    enable_reconnect;
     ReconnectInfo           reconnect_info;
+    bool                    enable_unpack;
+    unpack_setting_t        unpack_setting;
 
     // Callback
     std::function<void(const TSocketChannelPtr&)>           onConnection;
     std::function<void(const TSocketChannelPtr&, Buffer*)>  onMessage;
     std::function<void(const TSocketChannelPtr&, Buffer*)>  onWriteComplete;
+
 private:
     EventLoopThread         loop_thread;
 };

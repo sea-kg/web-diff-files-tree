@@ -4,6 +4,7 @@
 #include "hexport.h"
 #include "hplatform.h"
 #include "hdef.h"
+#include "hssl.h"
 
 typedef struct hloop_s      hloop_t;
 typedef struct hevent_s     hevent_t;
@@ -63,10 +64,11 @@ typedef enum {
     hevent_cb           cb;             \
     void*               userdata;       \
     void*               privdata;       \
-    int                 priority;       \
     struct hevent_s*    pending_next;   \
+    int                 priority;       \
     HEVENT_FLAGS
 
+// sizeof(struct hevent_s)=64 on x64
 struct hevent_s {
     HEVENT_FIELDS
 };
@@ -81,20 +83,34 @@ struct hevent_s {
 #define hevent_userdata(ev)     (((hevent_t*)(ev))->userdata)
 
 typedef enum {
-    HIO_TYPE_UNKNOWN = 0,
-    HIO_TYPE_STDIN   = 0x00000001,
-    HIO_TYPE_STDOUT  = 0x00000002,
-    HIO_TYPE_STDERR  = 0x00000004,
-    HIO_TYPE_STDIO   = 0x0000000F,
+    HIO_TYPE_UNKNOWN    = 0,
+    HIO_TYPE_STDIN      = 0x00000001,
+    HIO_TYPE_STDOUT     = 0x00000002,
+    HIO_TYPE_STDERR     = 0x00000004,
+    HIO_TYPE_STDIO      = 0x0000000F,
 
-    HIO_TYPE_FILE    = 0x00000010,
+    HIO_TYPE_FILE       = 0x00000010,
 
-    HIO_TYPE_IP      = 0x00000100,
-    HIO_TYPE_UDP     = 0x00001000,
-    HIO_TYPE_TCP     = 0x00010000,
-    HIO_TYPE_SSL     = 0x00020000,
-    HIO_TYPE_SOCKET  = 0x00FFFF00,
+    HIO_TYPE_IP         = 0x00000100,
+    HIO_TYPE_SOCK_RAW   = 0x00000F00,
+
+    HIO_TYPE_UDP        = 0x00001000,
+    HIO_TYPE_KCP        = 0x00002000,
+    HIO_TYPE_DTLS       = 0x00010000,
+    HIO_TYPE_SOCK_DGRAM = 0x000FF000,
+
+    HIO_TYPE_TCP        = 0x00100000,
+    HIO_TYPE_SSL        = 0x01000000,
+    HIO_TYPE_TLS        = HIO_TYPE_SSL,
+    HIO_TYPE_SOCK_STREAM= 0x0FF00000,
+
+    HIO_TYPE_SOCKET     = 0x0FFFFF00,
 } hio_type_e;
+
+typedef enum {
+    HIO_SERVER_SIDE  = 0,
+    HIO_CLIENT_SIDE  = 1,
+} hio_side_e;
 
 #define HIO_DEFAULT_CONNECT_TIMEOUT     5000    // ms
 #define HIO_DEFAULT_CLOSE_TIMEOUT       60000   // ms
@@ -159,6 +175,7 @@ HV_EXPORT htimer_t* htimer_add(hloop_t* loop, htimer_cb cb, uint32_t timeout, ui
 /*
  * minute   hour    day     week    month       cb
  * 0~59     0~23    1~31    0~6     1~12
+ *  -1      -1      -1      -1      -1          cron.minutely
  *  30      -1      -1      -1      -1          cron.hourly
  *  30      1       -1      -1      -1          cron.daily
  *  30      1       15      -1      -1          cron.monthly
@@ -202,6 +219,30 @@ HV_EXPORT hio_t* hio_get(hloop_t* loop, int fd);
 HV_EXPORT int    hio_add(hio_t* io, hio_cb cb, int events DEFAULT(HV_READ));
 HV_EXPORT int    hio_del(hio_t* io, int events DEFAULT(HV_RDWR));
 
+// NOTE: io detach from old loop and attach to new loop
+/* @see examples/multi-thread/one-acceptor-multi-workers.c
+void new_conn_event(hevent_t* ev) {
+    hloop_t* loop = ev->loop;
+    hio_t* io = (hio_t*)hevent_userdata(ev);
+    hio_attach(loop, io);
+}
+
+void on_accpet(hio_t* io) {
+    hio_detach(io);
+
+    hloop_t* worker_loop = get_one_loop();
+    hevent_t ev;
+    memset(&ev, 0, sizeof(ev));
+    ev.loop = worker_loop;
+    ev.cb = new_conn_event;
+    ev.userdata = io;
+    hloop_post_event(worker_loop, &ev);
+}
+ */
+HV_EXPORT void hio_detach(/*hloop_t* loop,*/ hio_t* io);
+HV_EXPORT void hio_attach(hloop_t* loop, hio_t* io);
+HV_EXPORT bool hio_exists(hloop_t* loop, int fd);
+
 // hio_t fields
 // NOTE: fd cannot be used as unique identifier, so we provide an id.
 HV_EXPORT uint32_t hio_id (hio_t* io);
@@ -216,6 +257,8 @@ HV_EXPORT void hio_set_context(hio_t* io, void* ctx);
 HV_EXPORT void* hio_context(hio_t* io);
 HV_EXPORT bool hio_is_opened(hio_t* io);
 HV_EXPORT bool hio_is_closed(hio_t* io);
+HV_EXPORT size_t hio_read_bufsize(hio_t* io);
+HV_EXPORT size_t hio_write_bufsize(hio_t* io);
 
 // set callbacks
 HV_EXPORT void hio_setcb_accept   (hio_t* io, haccept_cb  accept_cb);
@@ -233,7 +276,10 @@ HV_EXPORT hclose_cb   hio_getcb_close(hio_t* io);
 // some useful settings
 // Enable SSL/TLS is so easy :)
 HV_EXPORT int  hio_enable_ssl(hio_t* io);
-// TODO: One loop per thread, one readbuf per loop.
+HV_EXPORT bool hio_is_ssl(hio_t* io);
+HV_EXPORT hssl_t hio_get_ssl(hio_t* io);
+HV_EXPORT int  hio_set_ssl(hio_t* io, hssl_t ssl);
+// NOTE: One loop per thread, one readbuf per loop.
 // But you can pass in your own readbuf instead of the default readbuf to avoid memcopy.
 HV_EXPORT void hio_set_readbuf(hio_t* io, void* buf, size_t len);
 // connect timeout => hclose_cb
@@ -262,6 +308,9 @@ HV_EXPORT int hio_connect(hio_t* io);
 HV_EXPORT int hio_read   (hio_t* io);
 #define hio_read_start(io) hio_read(io)
 #define hio_read_stop(io)  hio_del(io, HV_READ)
+// hio_read_start => hread_cb => hio_read_stop
+HV_EXPORT int hio_read_once (hio_t* io);
+HV_EXPORT int hio_read_until(hio_t* io, int len);
 // NOTE: hio_write is thread-safe, locked by recursive_mutex, allow to be called by other threads.
 // hio_try_write => hio_add(io, HV_WRITE) => write => hwrite_cb
 HV_EXPORT int hio_write  (hio_t* io, const void* buf, size_t len);
@@ -300,27 +349,35 @@ HV_EXPORT hio_t* hrecvfrom (hloop_t* loop, int sockfd, void* buf, size_t len, hr
 HV_EXPORT hio_t* hsendto   (hloop_t* loop, int sockfd, const void* buf, size_t len, hwrite_cb write_cb DEFAULT(NULL));
 
 //-----------------top-level apis---------------------------------------------
-// Resolver -> socket -> hio_get
-HV_EXPORT hio_t* hio_create(hloop_t* loop, const char* host, int port, int type DEFAULT(SOCK_STREAM));
+// @hio_create_socket: socket -> bind -> listen
+// sockaddr_set_ipport -> socket -> hio_get(loop, sockfd) ->
+// side == HIO_SERVER_SIDE ? bind ->
+// type & HIO_TYPE_SOCK_STREAM ? listen ->
+HV_EXPORT hio_t* hio_create_socket(hloop_t* loop, const char* host, int port,
+                            hio_type_e type DEFAULT(HIO_TYPE_TCP),
+                            hio_side_e side DEFAULT(HIO_SERVER_SIDE));
 
-// @tcp_server: socket -> bind -> listen -> haccept
+// @tcp_server: hio_create_socket(loop, host, port, HIO_TYPE_TCP, HIO_SERVER_SIDE) -> hio_setcb_accept -> hio_accept
 // @see examples/tcp_echo_server.c
 HV_EXPORT hio_t* hloop_create_tcp_server (hloop_t* loop, const char* host, int port, haccept_cb accept_cb);
-// @tcp_client: hio_create(loop, host, port, SOCK_STREAM) -> hconnect
+
+// @tcp_client: hio_create_socket(loop, host, port, HIO_TYPE_TCP, HIO_CLIENT_SIDE) -> hio_setcb_connect -> hio_connect
 // @see examples/nc.c
 HV_EXPORT hio_t* hloop_create_tcp_client (hloop_t* loop, const char* host, int port, hconnect_cb connect_cb);
 
-// @ssl_server: hloop_create_tcp_server -> hio_enable_ssl
+// @ssl_server: hio_create_socket(loop, host, port, HIO_TYPE_SSL, HIO_SERVER_SIDE) -> hio_setcb_accept -> hio_accept
 // @see examples/tcp_echo_server.c => #define TEST_SSL 1
 HV_EXPORT hio_t* hloop_create_ssl_server (hloop_t* loop, const char* host, int port, haccept_cb accept_cb);
-// @ssl_client: hio_create(loop, host, port, SOCK_STREAM) -> hio_enable_ssl -> hconnect
+
+// @ssl_client: hio_create_socket(loop, host, port, HIO_TYPE_SSL, HIO_CLIENT_SIDE) -> hio_setcb_connect -> hio_connect
 // @see examples/nc.c => #define TEST_SSL 1
 HV_EXPORT hio_t* hloop_create_ssl_client (hloop_t* loop, const char* host, int port, hconnect_cb connect_cb);
 
-// @udp_server: socket -> bind -> hio_get
+// @udp_server: hio_create_socket(loop, host, port, HIO_TYPE_UDP, HIO_SERVER_SIDE)
 // @see examples/udp_echo_server.c
 HV_EXPORT hio_t* hloop_create_udp_server (hloop_t* loop, const char* host, int port);
-// @udp_client: hio_create(loop, host, port, SOCK_DGRAM)
+
+// @udp_server: hio_create_socket(loop, host, port, HIO_TYPE_UDP, HIO_CLIENT_SIDE)
 // @see examples/nc.c
 HV_EXPORT hio_t* hloop_create_udp_client (hloop_t* loop, const char* host, int port);
 
@@ -352,6 +409,156 @@ HV_EXPORT hio_t* hio_setup_tcp_upstream(hio_t* io, const char* host, int port, i
 // @return upstream_io
 // @see examples/udp_proxy_server
 HV_EXPORT hio_t* hio_setup_udp_upstream(hio_t* io, const char* host, int port);
+
+//-----------------unpack---------------------------------------------
+typedef enum {
+    UNPACK_BY_FIXED_LENGTH  = 1,    // Not recommended
+    UNPACK_BY_DELIMITER     = 2,    // Suitable for text protocol
+    UNPACK_BY_LENGTH_FIELD  = 3,    // Suitable for binary protocol
+} unpack_mode_e;
+
+#define DEFAULT_PACKAGE_MAX_LENGTH  (1 << 21)   // 2M
+
+// UNPACK_BY_DELIMITER
+#define PACKAGE_MAX_DELIMITER_BYTES 8
+
+// UNPACK_BY_LENGTH_FIELD
+typedef enum {
+    ENCODE_BY_VARINT        = 17,               // 1 MSB + 7 bits
+    ENCODE_BY_LITTEL_ENDIAN = LITTLE_ENDIAN,    // 1234
+    ENCODE_BY_BIG_ENDIAN    = BIG_ENDIAN,       // 4321
+} unpack_coding_e;
+
+typedef struct unpack_setting_s {
+    unpack_mode_e   mode;
+    unsigned int    package_max_length;
+    union {
+        // UNPACK_BY_FIXED_LENGTH
+        struct {
+            unsigned int    fixed_length;
+        };
+        // UNPACK_BY_DELIMITER
+        struct {
+            unsigned char   delimiter[PACKAGE_MAX_DELIMITER_BYTES];
+            unsigned short  delimiter_bytes;
+        };
+        // UNPACK_BY_LENGTH_FIELD
+        /* package_len = head_len + body_len + length_adjustment
+         *
+         * if (length_field_coding == ENCODE_BY_VARINT) head_len = body_offset + varint_bytes - length_field_bytes;
+         * else head_len = body_offset;
+         *
+         * body_len calc by length_field
+         *
+         */
+        struct {
+            unsigned short  body_offset;
+            unsigned short  length_field_offset;
+            unsigned short  length_field_bytes;
+                     short  length_adjustment;
+            unpack_coding_e length_field_coding;
+        };
+    };
+#ifdef __cplusplus
+    unpack_setting_s() {
+        // Recommended setting:
+        // head = flags:1byte + length:4bytes = 5bytes
+        mode = UNPACK_BY_LENGTH_FIELD;
+        package_max_length = DEFAULT_PACKAGE_MAX_LENGTH;
+        fixed_length = 0;
+        delimiter_bytes = 0;
+        body_offset = 5;
+        length_field_offset = 1;
+        length_field_bytes = 4;
+        length_field_coding = ENCODE_BY_BIG_ENDIAN;
+        length_adjustment = 0;
+    }
+#endif
+} unpack_setting_t;
+
+HV_EXPORT void hio_set_unpack(hio_t* io, unpack_setting_t* setting);
+HV_EXPORT void hio_unset_unpack(hio_t* io);
+
+// unpack examples
+/*
+unpack_setting_t ftp_unpack_setting;
+memset(&ftp_unpack_setting, 0, sizeof(unpack_setting_t));
+ftp_unpack_setting.package_max_length = DEFAULT_PACKAGE_MAX_LENGTH;
+ftp_unpack_setting.mode = UNPACK_BY_DELIMITER;
+ftp_unpack_setting.delimiter[0] = '\r';
+ftp_unpack_setting.delimiter[1] = '\n';
+ftp_unpack_setting.delimiter_bytes = 2;
+
+unpack_setting_t mqtt_unpack_setting = {
+    .mode = UNPACK_BY_LENGTH_FIELD,
+    .package_max_length = DEFAULT_PACKAGE_MAX_LENGTH,
+    .body_offset = 2,
+    .length_field_offset = 1,
+    .length_field_bytes = 1,
+    .length_field_coding = ENCODE_BY_VARINT,
+};
+
+unpack_setting_t grpc_unpack_setting = {
+    .mode = UNPACK_BY_LENGTH_FIELD,
+    .package_max_length = DEFAULT_PACKAGE_MAX_LENGTH,
+    .body_offset = 5,
+    .length_field_offset = 1,
+    .length_field_bytes = 4,
+    .length_field_coding = ENCODE_BY_BIG_ENDIAN,
+};
+*/
+
+//-----------------rudp---------------------------------------------
+#if WITH_KCP
+#define WITH_RUDP 1
+#endif
+
+#if WITH_RUDP
+// NOTE: hio_close_rudp is thread-safe.
+HV_EXPORT int hio_close_rudp(hio_t* io, struct sockaddr* peeraddr DEFAULT(NULL));
+#endif
+
+#if WITH_KCP
+typedef struct kcp_setting_s {
+    // ikcp_create(conv, ...)
+    int conv;
+    // ikcp_nodelay(kcp, nodelay, interval, fastresend, nocwnd)
+    int nodelay;
+    int interval;
+    int fastresend;
+    int nocwnd;
+    // ikcp_wndsize(kcp, sndwnd, rcvwnd)
+    int sndwnd;
+    int rcvwnd;
+    // ikcp_setmtu(kcp, mtu)
+    int mtu;
+    // ikcp_update
+    int update_interval;
+
+#ifdef __cplusplus
+    kcp_setting_s() {
+        conv = 0x11223344;
+        // normal mode
+        nodelay = 0;
+        interval = 40;
+        fastresend = 0;
+        nocwnd = 0;
+        // fast mode
+        // nodelay = 1;
+        // interval = 10;
+        // fastresend = 2;
+        // nocwnd = 1;
+
+        sndwnd = 0;
+        rcvwnd = 0;
+        mtu = 1400;
+        update_interval = 10; // ms
+    }
+#endif
+} kcp_setting_t;
+
+HV_EXPORT int hio_set_kcp(hio_t* io, kcp_setting_t* setting DEFAULT(NULL));
+#endif
 
 END_EXTERN_C
 

@@ -5,17 +5,73 @@
 #include <string.h>
 #include <stdarg.h>
 
+namespace hv {
+
+std::string& toupper(std::string& str) {
+    // std::transform(str.begin(), str.end(), str.begin(), ::toupper);
+    char* p = (char*)str.c_str();
+    while (*p != '\0') {
+        if (*p >= 'a' && *p <= 'z') {
+            *p &= ~0x20;
+        }
+        ++p;
+    }
+    return str;
+}
+
+std::string& tolower(std::string& str) {
+    // std::transform(str.begin(), str.end(), str.begin(), ::tolower);
+    char* p = (char*)str.c_str();
+    while (*p != '\0') {
+        if (*p >= 'A' && *p <= 'Z') {
+            *p |= 0x20;
+        }
+        ++p;
+    }
+    return str;
+}
+
+std::string& reverse(std::string& str) {
+    // std::reverse(str.begin(), str.end());
+    char* b = (char*)str.c_str();
+    char* e = b + str.length() - 1;
+    char tmp;
+    while (e > b) {
+        tmp = *e;
+        *e = *b;
+        *b = tmp;
+        --e;
+        ++b;
+    }
+    return str;
+}
+
+bool startswith(const std::string& str, const std::string& start) {
+    if (str.length() < start.length()) return false;
+    return str.compare(0, start.length(), start) == 0;
+}
+
+bool endswith(const std::string& str, const std::string& end) {
+    if (str.length() < end.length()) return false;
+    return str.compare(str.length() - end.length(), end.length(), end) == 0;
+}
+
+bool contains(const std::string& str, const std::string& sub) {
+    if (str.length() < sub.length()) return false;
+    return str.find(sub) != std::string::npos;
+}
+
 static inline int vscprintf(const char* fmt, va_list ap) {
     return vsnprintf(NULL, 0, fmt, ap);
 }
 
-string asprintf(const char* fmt, ...) {
+std::string asprintf(const char* fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     int len = vscprintf(fmt, ap);
     va_end(ap);
 
-    string str;
+    std::string str;
     str.reserve(len+1);
     // must resize to set str.size
     str.resize(len);
@@ -27,7 +83,7 @@ string asprintf(const char* fmt, ...) {
     return str;
 }
 
-StringList split(const string& str, char delim) {
+StringList split(const std::string& str, char delim) {
     /*
     std::stringstream ss;
     ss << str;
@@ -52,7 +108,7 @@ StringList split(const string& str, char delim) {
     return res;
 }
 
-hv::KeyValue splitKV(const string& str, char kv_kv, char k_v) {
+hv::KeyValue splitKV(const std::string& str, char kv_kv, char k_v) {
     enum {
         s_key,
         s_value,
@@ -87,26 +143,26 @@ hv::KeyValue splitKV(const string& str, char kv_kv, char k_v) {
     return kvs;
 }
 
-string trim(const string& str, const char* chars) {
-    string::size_type pos1 = str.find_first_not_of(chars);
-    if (pos1 == string::npos)   return "";
+std::string trim(const std::string& str, const char* chars) {
+    std::string::size_type pos1 = str.find_first_not_of(chars);
+    if (pos1 == std::string::npos)   return "";
 
-    string::size_type pos2 = str.find_last_not_of(chars);
+    std::string::size_type pos2 = str.find_last_not_of(chars);
     return str.substr(pos1, pos2-pos1+1);
 }
 
-string trimL(const string& str, const char* chars) {
-    string::size_type pos = str.find_first_not_of(chars);
-    if (pos == string::npos)    return "";
+std::string ltrim(const std::string& str, const char* chars) {
+    std::string::size_type pos = str.find_first_not_of(chars);
+    if (pos == std::string::npos)    return "";
     return str.substr(pos);
 }
 
-string trimR(const string& str, const char* chars) {
-    string::size_type pos = str.find_last_not_of(chars);
+std::string rtrim(const std::string& str, const char* chars) {
+    std::string::size_type pos = str.find_last_not_of(chars);
     return str.substr(0, pos+1);
 }
 
-string trim_pairs(const string& str, const char* pairs) {
+std::string trim_pairs(const std::string& str, const char* pairs) {
     const char* s = str.c_str();
     const char* e = str.c_str() + str.size() - 1;
     const char* p = pairs;
@@ -121,77 +177,26 @@ string trim_pairs(const string& str, const char* pairs) {
     return is_pair ? str.substr(1, str.size()-2) : str;
 }
 
-string replace(const string& str, const string& find, const string& rep) {
-    string::size_type pos = 0;
-    string::size_type a = find.size();
-    string::size_type b = rep.size();
+std::string replace(const std::string& str, const std::string& find, const std::string& rep) {
+    std::string res(str);
+    std::string::size_type pos = res.find(find);
+    if (pos != std::string::npos) {
+        res.replace(pos, find.size(), rep);
+    }
+    return res;
+}
 
-    string res(str);
-    while ((pos = res.find(find, pos)) != string::npos) {
+std::string replaceAll(const std::string& str, const std::string& find, const std::string& rep) {
+    std::string::size_type pos = 0;
+    std::string::size_type a = find.size();
+    std::string::size_type b = rep.size();
+
+    std::string res(str);
+    while ((pos = res.find(find, pos)) != std::string::npos) {
         res.replace(pos, a, rep);
         pos += b;
     }
     return res;
 }
 
-string basename(const string& str) {
-    string::size_type pos1 = str.find_last_not_of("/\\");
-    if (pos1 == string::npos) {
-        return "/";
-    }
-    string::size_type pos2 = str.find_last_of("/\\", pos1);
-    if (pos2 == string::npos) {
-        pos2 = 0;
-    } else {
-        pos2++;
-    }
-
-    return str.substr(pos2, pos1-pos2+1);
-}
-
-string dirname(const string& str) {
-    string::size_type pos1 = str.find_last_not_of("/\\");
-    if (pos1 == string::npos) {
-        return "/";
-    }
-    string::size_type pos2 = str.find_last_of("/\\", pos1);
-    if (pos2 == string::npos) {
-        return ".";
-    } else if (pos2 == 0) {
-        pos2 = 1;
-    }
-
-    return str.substr(0, pos2);
-}
-
-string filename(const string& str) {
-    string::size_type pos1 = str.find_last_of("/\\");
-    if (pos1 == string::npos) {
-        pos1 = 0;
-    } else {
-        pos1++;
-    }
-    string file = str.substr(pos1, -1);
-
-    string::size_type pos2 = file.find_last_of(".");
-    if (pos2 == string::npos) {
-        return file;
-    }
-    return file.substr(0, pos2);
-}
-
-string suffixname(const string& str) {
-    string::size_type pos1 = str.find_last_of("/\\");
-    if (pos1 == string::npos) {
-        pos1 = 0;
-    } else {
-        pos1++;
-    }
-    string file = str.substr(pos1, -1);
-
-    string::size_type pos2 = file.find_last_of(".");
-    if (pos2 == string::npos) {
-        return "";
-    }
-    return file.substr(pos2+1, -1);
-}
+} // end namespace hv

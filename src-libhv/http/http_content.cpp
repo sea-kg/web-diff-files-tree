@@ -4,6 +4,8 @@
 
 #include <string.h>
 
+using namespace hv;
+
 std::string dump_query_params(const QueryParams& query_params) {
     std::string query_string;
     for (auto& pair : query_params) {
@@ -83,7 +85,7 @@ std::string dump_multipart(MultiPart& mp, const char* boundary) {
                     file.readall(form.content);
                 }
             }
-            snprintf(c_str, sizeof(c_str), "; filename=\"%s\"", basename(form.filename).c_str());
+            snprintf(c_str, sizeof(c_str), "; filename=\"%s\"", hv_basename(form.filename.c_str()));
             str += c_str;
             const char* suffix = strrchr(form.filename.c_str(), '.');
             if (suffix) {
@@ -134,7 +136,7 @@ struct multipart_parser_userdata {
                 StringList kv = split(trim(str, " "), '=');
                 if (kv.size() == 2) {
                     const char* key = kv.begin()->c_str();
-                    string value = *(kv.begin() + 1);
+                    std::string value = *(kv.begin() + 1);
                     value = trim_pairs(value, "\"\"\'\'");
                     if (strcmp(key, "name") == 0) {
                         name = value;

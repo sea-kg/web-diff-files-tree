@@ -191,7 +191,7 @@ int hv_mkdir_p(const char* dir) {
     if (access(dir, 0) == 0) {
         return EEXIST;
     }
-    char tmp[MAX_PATH];
+    char tmp[MAX_PATH] = {0};
     safe_strncpy(tmp, dir, sizeof(tmp));
     char* p = tmp;
     char delim = '/';
@@ -221,7 +221,7 @@ int hv_rmdir_p(const char* dir) {
     if (rmdir(dir) != 0) {
         return EPERM;
     }
-    char tmp[MAX_PATH];
+    char tmp[MAX_PATH] = {0};
     safe_strncpy(tmp, dir, sizeof(tmp));
     char* p = tmp;
     while (*p) ++p;
@@ -238,6 +238,38 @@ int hv_rmdir_p(const char* dir) {
         }
     }
     return 0;
+}
+
+bool hv_exists(const char* path) {
+    return access(path, 0) == 0;
+}
+
+bool hv_isdir(const char* path) {
+    if (access(path, 0) != 0) return false;
+    struct stat st;
+    memset(&st, 0, sizeof(st));
+    stat(path, &st);
+    return S_ISDIR(st.st_mode);
+}
+
+bool hv_isfile(const char* path) {
+    if (access(path, 0) != 0) return false;
+    struct stat st;
+    memset(&st, 0, sizeof(st));
+    stat(path, &st);
+    return S_ISREG(st.st_mode);
+}
+
+bool hv_islink(const char* path) {
+#ifdef OS_WIN
+    return hv_isdir(path) && (GetFileAttributes(path) & FILE_ATTRIBUTE_REPARSE_POINT);
+#else
+    if (access(path, 0) != 0) return false;
+    struct stat st;
+    memset(&st, 0, sizeof(st));
+    lstat(path, &st);
+    return S_ISLNK(st.st_mode);
+#endif
 }
 
 bool getboolean(const char* str) {
@@ -268,7 +300,7 @@ char* get_executable_path(char* buf, int size) {
 }
 
 char* get_executable_dir(char* buf, int size) {
-    char filepath[MAX_PATH];
+    char filepath[MAX_PATH] = {0};
     get_executable_path(filepath, sizeof(filepath));
     char* pos = strrchr_dir(filepath);
     if (pos) {
@@ -279,7 +311,7 @@ char* get_executable_dir(char* buf, int size) {
 }
 
 char* get_executable_file(char* buf, int size) {
-    char filepath[MAX_PATH];
+    char filepath[MAX_PATH] = {0};
     get_executable_path(filepath, sizeof(filepath));
     char* pos = strrchr_dir(filepath);
     if (pos) {

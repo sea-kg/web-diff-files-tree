@@ -5,6 +5,7 @@
 #include "hssl.h"
 #include "hlog.h"
 #include "hthread.h"
+#include "unpack.h"
 
 static void __connect_timeout_cb(htimer_t* timer) {
     hio_t* io = (hio_t*)timer->privdata;
@@ -33,40 +34,12 @@ static void __close_timeout_cb(htimer_t* timer) {
 }
 
 static void __accept_cb(hio_t* io) {
-    /*
-    char localaddrstr[SOCKADDR_STRLEN] = {0};
-    char peeraddrstr[SOCKADDR_STRLEN] = {0};
-    printd("accept connfd=%d [%s] <= [%s]\n", io->fd,
-            SOCKADDR_STR(io->localaddr, localaddrstr),
-            SOCKADDR_STR(io->peeraddr, peeraddrstr));
-    */
-
-    if (io->accept_cb) {
-        // printd("accept_cb------\n");
-        io->accept_cb(io);
-        // printd("accept_cb======\n");
-    }
+    hio_accept_cb(io);
 }
 
 static void __connect_cb(hio_t* io) {
-    /*
-    char localaddrstr[SOCKADDR_STRLEN] = {0};
-    char peeraddrstr[SOCKADDR_STRLEN] = {0};
-    printd("connect connfd=%d [%s] => [%s]\n", io->fd,
-            SOCKADDR_STR(io->localaddr, localaddrstr),
-            SOCKADDR_STR(io->peeraddr, peeraddrstr));
-    */
-    if (io->connect_timer) {
-        htimer_del(io->connect_timer);
-        io->connect_timer = NULL;
-        io->connect_timeout = 0;
-    }
-
-    if (io->connect_cb) {
-        // printd("connect_cb------\n");
-        io->connect_cb(io);
-        // printd("connect_cb======\n");
-    }
+    hio_del_connect_timer(io);
+    hio_connect_cb(io);
 }
 
 static void __read_cb(hio_t* io, void* buf, int readbytes) {
@@ -75,10 +48,28 @@ static void __read_cb(hio_t* io, void* buf, int readbytes) {
         htimer_reset(io->keepalive_timer);
     }
 
-    if (io->read_cb) {
-        // printd("read_cb------\n");
-        io->read_cb(io, buf, readbytes);
-        // printd("read_cb======\n");
+    if (io->unpack_setting) {
+        hio_unpack(io, buf, readbytes);
+    } else {
+        if (io->read_once) {
+            hio_read_stop(io);
+        }
+
+#if WITH_KCP
+        if (io->io_type == HIO_TYPE_KCP) {
+            hio_read_kcp(io, buf, readbytes);
+            return;
+        }
+#endif
+        hio_read_cb(io, buf, readbytes);
+    }
+
+    // readbuf autosize
+    if (io->small_readbytes_cnt >= 3) {
+        io->small_readbytes_cnt = 0;
+        size_t small_size = io->readbuf.len / 2;
+        io->readbuf.base = (char*)safe_realloc(io->readbuf.base, small_size, io->readbuf.len);
+        io->readbuf.len = small_size;
     }
 }
 
@@ -87,46 +78,16 @@ static void __write_cb(hio_t* io, const void* buf, int writebytes) {
     if (io->keepalive_timer) {
         htimer_reset(io->keepalive_timer);
     }
-
-    if (io->write_cb) {
-        // printd("write_cb------\n");
-        io->write_cb(io, buf, writebytes);
-        // printd("write_cb======\n");
-    }
+    hio_write_cb(io, buf, writebytes);
 }
 
 static void __close_cb(hio_t* io) {
     // printd("close fd=%d\n", io->fd);
-    if (io->connect_timer) {
-        htimer_del(io->connect_timer);
-        io->connect_timer = NULL;
-        io->connect_timeout = 0;
-    }
-
-    if (io->close_timer) {
-        htimer_del(io->close_timer);
-        io->close_timer = NULL;
-        io->close_timeout = 0;
-    }
-
-    if (io->keepalive_timer) {
-        htimer_del(io->keepalive_timer);
-        io->keepalive_timer = NULL;
-        io->keepalive_timeout = 0;
-    }
-
-    if (io->heartbeat_timer) {
-        htimer_del(io->heartbeat_timer);
-        io->heartbeat_timer = NULL;
-        io->heartbeat_interval = 0;
-        io->heartbeat_fn = NULL;
-    }
-
-    if (io->close_cb) {
-        // printd("close_cb------\n");
-        io->close_cb(io);
-        // printd("close_cb======\n");
-    }
+    hio_del_connect_timer(io);
+    hio_del_close_timer(io);
+    hio_del_keepalive_timer(io);
+    hio_del_heartbeat_timer(io);
+    hio_close_cb(io);
 }
 
 static void ssl_server_handshake(hio_t* io) {
@@ -174,20 +135,21 @@ static void ssl_client_handshake(hio_t* io) {
 }
 
 static void nio_accept(hio_t* io) {
-    //printd("nio_accept listenfd=%d\n", io->fd);
+    // printd("nio_accept listenfd=%d\n", io->fd);
+    int connfd = 0, err = 0;
     socklen_t addrlen;
 accept:
     addrlen = sizeof(sockaddr_u);
-    int connfd = accept(io->fd, io->peeraddr, &addrlen);
+    connfd = accept(io->fd, io->peeraddr, &addrlen);
     hio_t* connio = NULL;
     if (connfd < 0) {
-        if (socket_errno() == EAGAIN) {
+        err = socket_errno();
+        if (err == EAGAIN) {
             //goto accept_done;
             return;
-        }
-        else {
-            io->error = socket_errno();
+        } else {
             perror("accept");
+            io->error = err;
             goto accept_error;
         }
     }
@@ -197,18 +159,23 @@ accept:
     // NOTE: inherit from listenio
     connio->accept_cb = io->accept_cb;
     connio->userdata = io->userdata;
+    if (io->unpack_setting) {
+        hio_set_unpack(connio, io->unpack_setting);
+    }
 
     if (io->io_type == HIO_TYPE_SSL) {
-        hssl_ctx_t ssl_ctx = hssl_ctx_instance();
-        if (ssl_ctx == NULL) {
-            goto accept_error;
-        }
-        hssl_t ssl = hssl_new(ssl_ctx, connfd);
-        if (ssl == NULL) {
-            goto accept_error;
+        if (connio->ssl == NULL) {
+            hssl_ctx_t ssl_ctx = hssl_ctx_instance();
+            if (ssl_ctx == NULL) {
+                goto accept_error;
+            }
+            hssl_t ssl = hssl_new(ssl_ctx, connfd);
+            if (ssl == NULL) {
+                goto accept_error;
+            }
+            connio->ssl = ssl;
         }
         hio_enable_ssl(connio);
-        connio->ssl = ssl;
         ssl_server_handshake(connio);
     }
     else {
@@ -223,12 +190,12 @@ accept_error:
 }
 
 static void nio_connect(hio_t* io) {
-    //printd("nio_connect connfd=%d\n", io->fd);
+    // printd("nio_connect connfd=%d\n", io->fd);
     socklen_t addrlen = sizeof(sockaddr_u);
     int ret = getpeername(io->fd, io->peeraddr, &addrlen);
     if (ret < 0) {
         io->error = socket_errno();
-        printd("connect failed: %s: %d\n", strerror(socket_errno()), socket_errno());
+        printd("connect failed: %s: %d\n", strerror(io->error), io->error);
         goto connect_failed;
     }
     else {
@@ -236,15 +203,17 @@ static void nio_connect(hio_t* io) {
         getsockname(io->fd, io->localaddr, &addrlen);
 
         if (io->io_type == HIO_TYPE_SSL) {
-            hssl_ctx_t ssl_ctx = hssl_ctx_instance();
-            if (ssl_ctx == NULL) {
-                goto connect_failed;
+            if (io->ssl == NULL) {
+                hssl_ctx_t ssl_ctx = hssl_ctx_instance();
+                if (ssl_ctx == NULL) {
+                    goto connect_failed;
+                }
+                hssl_t ssl = hssl_new(ssl_ctx, io->fd);
+                if (ssl == NULL) {
+                    goto connect_failed;
+                }
+                io->ssl = ssl;
             }
-            hssl_t ssl = hssl_new(ssl_ctx, io->fd);
-            if (ssl == NULL) {
-                goto connect_failed;
-            }
-            io->ssl = ssl;
             ssl_client_handshake(io);
         }
         else {
@@ -273,6 +242,7 @@ static int __nio_read(hio_t* io, void* buf, int len) {
 #endif
         break;
     case HIO_TYPE_UDP:
+    case HIO_TYPE_KCP:
     case HIO_TYPE_IP:
     {
         socklen_t addrlen = sizeof(sockaddr_u);
@@ -283,6 +253,7 @@ static int __nio_read(hio_t* io, void* buf, int len) {
         nread = read(io->fd, buf, len);
         break;
     }
+    // hlogd("read retval=%d", nread);
     return nread;
 }
 
@@ -300,6 +271,7 @@ static int __nio_write(hio_t* io, const void* buf, int len) {
 #endif
         break;
     case HIO_TYPE_UDP:
+    case HIO_TYPE_KCP:
     case HIO_TYPE_IP:
         nwrite = sendto(io->fd, buf, len, 0, io->peeraddr, SOCKADDR_LEN(io->peeraddr));
         break;
@@ -307,38 +279,52 @@ static int __nio_write(hio_t* io, const void* buf, int len) {
         nwrite = write(io->fd, buf, len);
         break;
     }
+    // hlogd("write retval=%d", nwrite);
     return nwrite;
 }
 
 static void nio_read(hio_t* io) {
-    //printd("nio_read fd=%d\n", io->fd);
+    // printd("nio_read fd=%d\n", io->fd);
     void* buf;
-    int len, nread;
+    int len = 0, nread = 0, err = 0;
 read:
-    if (io->readbuf.base == NULL || io->readbuf.len == 0) {
-        hio_set_readbuf(io, io->loop->readbuf.base, io->loop->readbuf.len);
+    buf = io->readbuf.base + io->readbuf.offset;
+    if (io->read_until) {
+        len = io->read_until;
+    } else {
+        len = io->readbuf.len - io->readbuf.offset;
     }
-    buf = io->readbuf.base;
-    len = io->readbuf.len;
     nread = __nio_read(io, buf, len);
-    //printd("read retval=%d\n", nread);
+    // printd("read retval=%d\n", nread);
     if (nread < 0) {
-        if (socket_errno() == EAGAIN) {
-            //goto read_done;
+        err = socket_errno();
+        if (err == EAGAIN) {
+            // goto read_done;
             return;
-        }
-        else {
-            io->error = socket_errno();
+        } else if (err == EMSGSIZE) {
+            // ignore
+            return;
+        } else {
             // perror("read");
+            io->error = err;
             goto read_error;
         }
     }
     if (nread == 0) {
         goto disconnect;
     }
-    __read_cb(io, buf, nread);
-    if (nread == len) {
-        goto read;
+    if (io->read_until) {
+        io->readbuf.offset += nread;
+        io->read_until -= nread;
+        if (io->read_until == 0) {
+            __read_cb(io, io->readbuf.base, io->readbuf.offset);
+            io->readbuf.offset = 0;
+        }
+    } else {
+        __read_cb(io, buf, nread);
+        if (nread == len) {
+            goto read;
+        }
     }
     return;
 read_error:
@@ -347,8 +333,8 @@ disconnect:
 }
 
 static void nio_write(hio_t* io) {
-    //printd("nio_write fd=%d\n", io->fd);
-    int nwrite = 0;
+    // printd("nio_write fd=%d\n", io->fd);
+    int nwrite = 0, err = 0;
     hrecursive_mutex_lock(&io->write_mutex);
 write:
     if (write_queue_empty(&io->write_queue)) {
@@ -363,16 +349,16 @@ write:
     char* buf = pbuf->base + pbuf->offset;
     int len = pbuf->len - pbuf->offset;
     nwrite = __nio_write(io, buf, len);
-    //printd("write retval=%d\n", nwrite);
+    // printd("write retval=%d\n", nwrite);
     if (nwrite < 0) {
-        if (socket_errno() == EAGAIN) {
+        err = socket_errno();
+        if (err == EAGAIN) {
             //goto write_done;
             hrecursive_mutex_unlock(&io->write_mutex);
             return;
-        }
-        else {
-            io->error = socket_errno();
+        } else {
             // perror("write");
+            io->error = err;
             goto write_error;
         }
     }
@@ -381,6 +367,7 @@ write:
     }
     __write_cb(io, buf, nwrite);
     pbuf->offset += nwrite;
+    io->write_queue_bytes -= nwrite;
     if (nwrite == len) {
         HV_FREE(pbuf->base);
         write_queue_pop_front(&io->write_queue);
@@ -480,21 +467,26 @@ int hio_write (hio_t* io, const void* buf, size_t len) {
         hloge("hio_write called but fd[%d] already closed!", io->fd);
         return -1;
     }
-    int nwrite = 0;
+#if WITH_KCP
+    if (io->io_type == HIO_TYPE_KCP) {
+        return hio_write_kcp(io, buf, len);
+    }
+#endif
+    int nwrite = 0, err = 0;
     hrecursive_mutex_lock(&io->write_mutex);
     if (write_queue_empty(&io->write_queue)) {
 try_write:
         nwrite = __nio_write(io, buf, len);
-        //printd("write retval=%d\n", nwrite);
+        // printd("write retval=%d\n", nwrite);
         if (nwrite < 0) {
-            if (socket_errno() == EAGAIN) {
+            err = socket_errno();
+            if (err == EAGAIN) {
                 nwrite = 0;
                 hlogw("try_write failed, enqueue!");
                 goto enqueue;
-            }
-            else {
+            } else {
                 // perror("write");
-                io->error = socket_errno();
+                io->error = err;
                 goto write_error;
             }
         }
@@ -516,11 +508,7 @@ try_write:
                 hloop_post_event(io->loop, &ev);
             }
         }
-        if (io->write_cb) {
-            // printd("write_cb------\n");
-            io->write_cb(io, buf, nwrite);
-            // printd("write_cb======\n");
-        }
+        hio_write_cb(io, buf, nwrite);
 
         if (nwrite == len) {
             //goto write_done;
@@ -531,16 +519,23 @@ enqueue:
         hio_add(io, hio_handle_events, HV_WRITE);
     }
     if (nwrite < len) {
-        offset_buf_t rest;
-        rest.len = len;
-        rest.offset = nwrite;
+        offset_buf_t remain;
+        remain.len = len;
+        remain.offset = nwrite;
         // NOTE: free in nio_write
-        HV_ALLOC(rest.base, rest.len);
-        memcpy(rest.base, buf, rest.len);
+        HV_ALLOC(remain.base, remain.len);
+        memcpy(remain.base, buf, remain.len);
         if (io->write_queue.maxsize == 0) {
             write_queue_init(&io->write_queue, 4);
         }
-        write_queue_push_back(&io->write_queue, &rest);
+        write_queue_push_back(&io->write_queue, &remain);
+        io->write_queue_bytes += remain.len - remain.offset;
+        if (io->write_queue_bytes > WRITE_QUEUE_HIGH_WATER) {
+            hlogw("write queue %u, total %u, over high water %u",
+                (unsigned int)(remain.len - remain.offset),
+                (unsigned int)io->write_queue_bytes,
+                (unsigned int)WRITE_QUEUE_HIGH_WATER);
+        }
     }
     hrecursive_mutex_unlock(&io->write_mutex);
     return nwrite;

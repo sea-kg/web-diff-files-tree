@@ -34,7 +34,7 @@
 #elif defined(sun) || defined(__sun) || defined(__sun__)
     #define OS_SOLARIS
 #else
-    #error "Unsupported operating system platform!"
+    #warning "Untested operating system platform!"
 #endif
 
 #if defined(OS_WIN32) || defined(OS_WIN64)
@@ -56,8 +56,7 @@
 #elif defined(__aarch64__) || defined(__ARM64__)
     #define ARCH_ARM64
 #else
-    #define ARCH_UNKNOWN
-    #warning "Unknown hardware architecture!"
+    #warning "Untested hardware architecture!"
 #endif
 
 // COMPILER
@@ -108,6 +107,7 @@
 
 #pragma warning (disable: 4018) // signed/unsigned comparison
 #pragma warning (disable: 4100) // unused param
+#pragma warning (disable: 4102) // unreferenced label
 #pragma warning (disable: 4244) // conversion loss of data
 #pragma warning (disable: 4251) // STL dll
 #pragma warning (disable: 4267) // size_t => int
@@ -152,6 +152,21 @@
     #define hv_delay(ms)    hv_msleep(ms)
     #define hv_mkdir(dir)   mkdir(dir)
 
+    // access
+    #ifndef F_OK
+    #define F_OK            0       /* test for existence of file */
+    #endif
+    #ifndef X_OK
+    #define X_OK            (1<<0)  /* test for execute or search permission */
+    #endif
+    #ifndef W_OK
+    #define W_OK            (1<<1)  /* test for write permission */
+    #endif
+    #ifndef R_OK
+    #define R_OK            (1<<2)  /* test for read permission */
+    #endif
+
+    // stat
     #ifndef S_ISREG
     #define S_ISREG(st_mode) (((st_mode) & S_IFMT) == S_IFREG)
     #endif

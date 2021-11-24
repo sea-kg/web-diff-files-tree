@@ -1,6 +1,7 @@
 #include "HttpServer.h"
 
 #include "hv.h"
+#include "hssl.h"
 #include "hmain.h"
 
 #include "httpdef.h"
@@ -103,14 +104,10 @@ static void on_recv(hio_t* io, void* _buf, int readbytes) {
         if (strncmp((char*)buf, HTTP2_MAGIC, MIN(readbytes, HTTP2_MAGIC_LEN)) == 0) {
             http_version = 2;
         }
-        if (!handler->Init(http_version)) {
+        if (!handler->Init(http_version, io)) {
             hloge("[%s:%d] unsupported HTTP%d", handler->ip, handler->port, http_version);
             hio_close(io);
             return;
-        }
-        handler->writer.reset(new HttpResponseWriter(io, handler->resp));
-        if (handler->writer) {
-            handler->writer->status = SocketChannel::CONNECTED;
         }
     }
 
@@ -220,7 +217,7 @@ static void on_recv(hio_t* io, void* _buf, int readbytes) {
     // switch protocol to websocket
     if (upgrade && upgrade_protocol == HttpHandler::WEBSOCKET) {
         WebSocketHandler* ws = handler->SwitchWebSocket();
-        ws->channel.reset(new WebSocketChannel(io, WS_SERVER));
+        ws->Init(io);
         ws->parser->onMessage = std::bind(websocket_onmessage, std::placeholders::_1, std::placeholders::_2, io);
         // NOTE: cancel keepalive timer, judge alive by heartbeat.
         hio_set_keepalive_timeout(io, 0);
@@ -245,15 +242,14 @@ static void on_close(hio_t* io) {
             // onclose
             handler->WebSocketOnClose();
         }
-        if (handler->writer) {
-            handler->writer->status = SocketChannel::DISCONNECTED;
-        }
         hevent_set_userdata(io, NULL);
         delete handler;
     }
 }
 
 static void on_accept(hio_t* io) {
+    http_server_t* server = (http_server_t*)hevent_userdata(io);
+    HttpService* service = server->service;
     /*
     printf("on_accept connfd=%d\n", hio_fd(io));
     char localaddrstr[SOCKADDR_STRLEN] = {0};
@@ -266,18 +262,18 @@ static void on_accept(hio_t* io) {
     hio_setcb_close(io, on_close);
     hio_setcb_read(io, on_recv);
     hio_read(io);
-    hio_set_keepalive_timeout(io, HIO_DEFAULT_KEEPALIVE_TIMEOUT);
+    hio_set_keepalive_timeout(io, service->keepalive_timeout);
+
     // new HttpHandler, delete on_close
     HttpHandler* handler = new HttpHandler;
     // ssl
-    handler->ssl = hio_type(io) == HIO_TYPE_SSL;
+    handler->ssl = hio_is_ssl(io);
     // ip
     sockaddr_ip((sockaddr_u*)hio_peeraddr(io), handler->ip, sizeof(handler->ip));
     // port
     handler->port = sockaddr_port((sockaddr_u*)hio_peeraddr(io));
     // service
-    http_server_t* server = (http_server_t*)hevent_userdata(io);
-    handler->service = server->service;
+    handler->service = service;
     // ws
     handler->ws_service = server->ws;
     // FileCache
@@ -366,15 +362,15 @@ int http_server_run(http_server_t* server, int wait) {
 }
 
 int http_server_stop(http_server_t* server) {
+    HttpServerPrivdata* privdata = (HttpServerPrivdata*)server->privdata;
+    if (privdata == NULL) return 0;
+
 #ifdef OS_UNIX
     if (server->worker_processes) {
         signal_handle("stop");
         return 0;
     }
 #endif
-
-    HttpServerPrivdata* privdata = (HttpServerPrivdata*)server->privdata;
-    if (privdata == NULL) return 0;
 
     // wait for all threads started and all loops running
     while (1) {

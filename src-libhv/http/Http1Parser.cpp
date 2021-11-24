@@ -10,22 +10,23 @@ static int on_body(http_parser* parser, const char *at, size_t length);
 static int on_message_begin(http_parser* parser);
 static int on_headers_complete(http_parser* parser);
 static int on_message_complete(http_parser* parser);
+static int on_chunk_header(http_parser* parser);
+static int on_chunk_complete(http_parser* parser);
 
-http_parser_settings* Http1Parser::cbs = NULL;
+http_parser_settings Http1Parser::cbs = {
+    on_message_begin,
+    on_url,
+    on_status,
+    on_header_field,
+    on_header_value,
+    on_headers_complete,
+    on_body,
+    on_message_complete,
+    on_chunk_header,
+    on_chunk_complete
+};
 
 Http1Parser::Http1Parser(http_session_type type) {
-    if (cbs == NULL) {
-        cbs = (http_parser_settings*)malloc(sizeof(http_parser_settings));
-        http_parser_settings_init(cbs);
-        cbs->on_message_begin    = on_message_begin;
-        cbs->on_url              = on_url;
-        cbs->on_status           = on_status;
-        cbs->on_header_field     = on_header_field;
-        cbs->on_header_value     = on_header_value;
-        cbs->on_headers_complete = on_headers_complete;
-        cbs->on_body             = on_body;
-        cbs->on_message_complete = on_message_complete;
-    }
     http_parser_init(&parser, HTTP_BOTH);
     parser.data = this;
     flags = 0;
@@ -46,7 +47,7 @@ int on_url(http_parser* parser, const char *at, size_t length) {
 }
 
 int on_status(http_parser* parser, const char *at, size_t length) {
-    printd("on_status:%.*s\n", (int)length, at);
+    printd("on_status:%d %.*s\n", (int)parser->status_code, (int)length, at);
     Http1Parser* hp = (Http1Parser*)parser->data;
     hp->state = HP_STATUS;
     return 0;
@@ -62,7 +63,7 @@ int on_header_field(http_parser* parser, const char *at, size_t length) {
 }
 
 int on_header_value(http_parser* parser, const char *at, size_t length) {
-    printd("on_header_value:%.*s""\n", (int)length, at);
+    printd("on_header_value:%.*s\n", (int)length, at);
     Http1Parser* hp = (Http1Parser*)parser->data;
     hp->state = HP_HEADER_VALUE;
     hp->header_value.append(at, length);
@@ -70,10 +71,15 @@ int on_header_value(http_parser* parser, const char *at, size_t length) {
 }
 
 int on_body(http_parser* parser, const char *at, size_t length) {
-    //printd("on_body:%.*s""\n", (int)length, at);
+    printd("on_body:%d\n", (int)length);
+    // printd("on_body:%.*s\n", (int)length, at);
     Http1Parser* hp = (Http1Parser*)parser->data;
     hp->state = HP_BODY;
-    hp->parsed->body.append(at, length);
+    if (hp->parsed->body_cb) {
+        hp->parsed->body_cb(at, length);
+    } else {
+        hp->parsed->body.append(at, length);
+    }
     return 0;
 }
 
@@ -101,7 +107,7 @@ int on_headers_complete(http_parser* parser) {
         HttpResponse* res = (HttpResponse*)hp->parsed;
         res->status_code = (http_status)parser->status_code;
         // response to HEAD
-        if (res->status_code == 200 && hp->flags & F_SKIPBODY) {
+        if (hp->flags & F_SKIPBODY) {
             skip_body = true;
         }
     }
@@ -120,6 +126,9 @@ int on_headers_complete(http_parser* parser) {
         }
     }
     hp->state = HP_HEADERS_COMPLETE;
+    if (hp->parsed->head_cb) {
+        hp->parsed->head_cb(hp->parsed->headers);
+    }
     return skip_body ? 1 : 0;
 }
 
@@ -127,5 +136,28 @@ int on_message_complete(http_parser* parser) {
     printd("on_message_complete\n");
     Http1Parser* hp = (Http1Parser*)parser->data;
     hp->state = HP_MESSAGE_COMPLETE;
+    return 0;
+}
+
+int on_chunk_header(http_parser* parser) {
+    printd("on_chunk_header:%llu\n", parser->content_length);
+    Http1Parser* hp = (Http1Parser*)parser->data;
+    hp->state = HP_CHUNK_HEADER;
+    int chunk_size = parser->content_length;
+    int reserve_size = MIN(chunk_size + 1, MAX_CONTENT_LENGTH);
+    if (reserve_size > hp->parsed->body.capacity()) {
+        hp->parsed->body.reserve(reserve_size);
+    }
+    return 0;
+}
+
+int on_chunk_complete(http_parser* parser) {
+    printd("on_chunk_complete\n");
+    Http1Parser* hp = (Http1Parser*)parser->data;
+    hp->state = HP_CHUNK_COMPLETE;
+    if (hp->parsed->chunked_cb) {
+        hp->parsed->chunked_cb(hp->parsed->body.c_str(), hp->parsed->body.size());
+        hp->parsed->body.clear();
+    }
     return 0;
 }

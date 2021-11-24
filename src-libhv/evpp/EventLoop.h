@@ -27,8 +27,10 @@ public:
         setStatus(kInitializing);
         if (loop) {
             loop_ = loop;
+            is_loop_owner = false;
         } else {
             loop_ = hloop_new(HLOOP_FLAG_AUTO_FREE);
+            is_loop_owner = true;
         }
         setStatus(kInitialized);
     }
@@ -52,6 +54,13 @@ public:
 
     void stop() {
         if (loop_ == NULL) return;
+        if (status() < kRunning) {
+            if (is_loop_owner) {
+                hloop_free(&loop_);
+            }
+            loop_ = NULL;
+            return;
+        }
         setStatus(kStopping);
         hloop_stop(loop_);
         loop_ = NULL;
@@ -206,6 +215,7 @@ private:
 
 private:
     hloop_t*                    loop_;
+    bool                        is_loop_owner;
     std::mutex                  mutex_;
     std::queue<EventPtr>        customEvents;   // GUAREDE_BY(mutex_)
     std::map<TimerID, Timer>    timers;         // GUAREDE_BY(mutex_)
@@ -217,21 +227,25 @@ typedef std::shared_ptr<EventLoop> EventLoopPtr;
 static inline EventLoop* tlsEventLoop() {
     return (EventLoop*)ThreadLocalStorage::get(ThreadLocalStorage::EVENT_LOOP);
 }
+#define currentThreadEventLoop tlsEventLoop()
 
 static inline TimerID setTimer(int timeout_ms, TimerCallback cb, int repeat = INFINITE) {
     EventLoop* loop = tlsEventLoop();
+    assert(loop != NULL);
     if (loop == NULL) return INVALID_TIMER_ID;
     return loop->setTimer(timeout_ms, cb, repeat);
 }
 
 static inline void killTimer(TimerID timerID) {
     EventLoop* loop = tlsEventLoop();
+    assert(loop != NULL);
     if (loop == NULL) return;
     loop->killTimer(timerID);
 }
 
 static inline void resetTimer(TimerID timerID) {
     EventLoop* loop = tlsEventLoop();
+    assert(loop != NULL);
     if (loop == NULL) return;
     loop->resetTimer(timerID);
 }

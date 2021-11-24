@@ -47,7 +47,7 @@ int AsyncHttpClient::doTask(const HttpClientTaskPtr& task) {
         hio_set_peeraddr(connio, &peeraddr.sa, sockaddr_len(&peeraddr));
         addChannel(connio);
         // https
-        if (strcmp(req->scheme.c_str(), "https") == 0) {
+        if (req->isHttps()) {
             hio_enable_ssl(connio);
         }
     }
@@ -95,7 +95,8 @@ int AsyncHttpClient::doTask(const HttpClientTaskPtr& task) {
             if (task->retry_delay) {
                 // try again after delay
                 setTimeout(ctx->task->retry_delay, [this, task](TimerID timerID){
-                    doTask(task);
+                    hlogi("retry %s %s", http_method_str(task->req->method), task->req->url.c_str());
+                    sendInLoop(task);
                 });
             } else {
                 send(task);
@@ -133,16 +134,22 @@ int AsyncHttpClient::doTask(const HttpClientTaskPtr& task) {
 int AsyncHttpClient::sendRequest(const SocketChannelPtr& channel) {
     HttpClientContext* ctx = (HttpClientContext*)channel->context();
     assert(ctx != NULL && ctx->task != NULL);
+    HttpRequest* req = ctx->task->req.get();
+    HttpResponse* resp = ctx->resp.get();
 
     if (ctx->parser == NULL) {
         ctx->parser.reset(HttpParser::New(HTTP_CLIENT, (http_version)ctx->task->req->http_major));
     }
-    if (ctx->resp == NULL) {
-        ctx->resp.reset(new HttpResponse);
+    if (resp == NULL) {
+        resp = new HttpResponse;
+        ctx->resp.reset(resp);
     }
+    if (req->head_cb)    resp->head_cb = std::move(req->head_cb);
+    if (req->body_cb)    resp->body_cb = std::move(req->body_cb);
+    if (req->chunked_cb) resp->chunked_cb = std::move(req->chunked_cb);
 
-    ctx->parser->InitResponse(ctx->resp.get());
-    ctx->parser->SubmitRequest(ctx->task->req.get());
+    ctx->parser->InitResponse(resp);
+    ctx->parser->SubmitRequest(req);
 
     char* data = NULL;
     size_t len = 0;

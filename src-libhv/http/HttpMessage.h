@@ -17,12 +17,17 @@
  *
  * @function
  * Content, ContentLength, ContentType
- * Get, Set
+ * ParseUrl, ParseBody
+ * DumpUrl, DumpHeaders, DumpBody, Dump
+ * GetJson, GetForm, GetUrlEncoded
  * GetHeader, GetParam, GetString, GetBool, GetInt, GetFloat
- * String, Data, File, Json
+ * String, Data, File, Json, FormFile, SetFormData, SetUrlEncoded
+ * Get, Set
  *
  * @example
- * see examples/httpd
+ * examples/http_server_test.cpp
+ * examples/http_client_test.cpp
+ * examples/httpd
  *
  */
 
@@ -35,6 +40,7 @@
 #include "hbase.h"
 #include "hstring.h"
 #include "hfile.h"
+#include "hpath.h"
 
 #include "httpdef.h"
 #include "http_content.h"
@@ -44,7 +50,7 @@ struct HNetAddr {
     int             port;
 
     std::string ipport() {
-        return asprintf("%s:%d", ip.c_str(), port);
+        return hv::asprintf("%s:%d", ip.c_str(), port);
     }
 };
 
@@ -68,9 +74,16 @@ struct HV_EXPORT HttpCookie {
     std::string dump() const;
 };
 
-typedef std::map<std::string, std::string, StringCaseLess>  http_headers;
-typedef std::vector<HttpCookie>                             http_cookies;
-typedef std::string                                         http_body;
+typedef std::map<std::string, std::string, hv::StringCaseLess>  http_headers;
+typedef std::vector<HttpCookie>                                 http_cookies;
+typedef std::string                                             http_body;
+
+typedef std::function<void(const http_headers& headers)>        http_head_cb;
+typedef std::function<void(const char* data, size_t size)>      http_body_cb;
+typedef std::function<void(const char* data, size_t size)>      http_chunked_cb;
+
+HV_EXPORT extern http_headers DefaultHeaders;
+HV_EXPORT extern http_body    NoBody;
 
 class HV_EXPORT HttpMessage {
 public:
@@ -83,6 +96,10 @@ public:
     http_cookies        cookies;
     http_body           body;
 
+    http_head_cb        head_cb;
+    http_body_cb        body_cb;
+    http_chunked_cb     chunked_cb; // Transfer-Encoding: chunked
+
     // structured content
     void*               content;    // DATA_NO_COPY
     int                 content_length;
@@ -92,7 +109,7 @@ public:
     MultiPart           form;       // MULTIPART_FORM_DATA
     hv::KeyValue        kv;         // X_WWW_FORM_URLENCODED
 
-    // T=[bool, int64_t, double]
+    // T=[bool, int, int64_t, float, double]
     template<typename T>
     T Get(const char* key, T defvalue = 0);
 
@@ -103,7 +120,7 @@ public:
 
     template<typename T>
     void Set(const char* key, const T& value) {
-        switch (content_type) {
+        switch (ContentType()) {
         case APPLICATION_JSON:
             json[key] = value;
             break;
@@ -135,32 +152,83 @@ public:
                     {1, 2, 3}
                 ));
      */
+    // Content-Type: application/json
     template<typename T>
     int Json(const T& t) {
         content_type = APPLICATION_JSON;
         json = t;
         return 200;
     }
-
-    void UploadFormFile(const char* name, const char* filepath) {
-        content_type = MULTIPART_FORM_DATA;
-        form[name] = FormData(NULL, filepath);
+    const hv::Json& GetJson() {
+        if (json.empty() && ContentType() == APPLICATION_JSON) {
+            ParseBody();
+        }
+        return json;
     }
 
-    int SaveFormFile(const char* name, const char* filepath) {
-        if (content_type != MULTIPART_FORM_DATA) {
+    // Content-Type: multipart/form-data
+    template<typename T>
+    void SetFormData(const char* name, const T& t) {
+        form[name] = FormData(t);
+    }
+    void SetFormFile(const char* name, const char* filepath) {
+        form[name] = FormData(NULL, filepath);
+    }
+    int FormFile(const char* name, const char* filepath) {
+        content_type = MULTIPART_FORM_DATA;
+        form[name] = FormData(NULL, filepath);
+        return 200;
+    }
+    const MultiPart& GetForm() {
+        if (form.empty() && ContentType() == MULTIPART_FORM_DATA) {
+            ParseBody();
+        }
+        return form;
+    }
+    std::string GetFormData(const char* name, const std::string& defvalue = "") {
+        if (form.empty() && ContentType() == MULTIPART_FORM_DATA) {
+            ParseBody();
+        }
+        auto iter = form.find(name);
+        return iter == form.end() ? defvalue : iter->second.content;
+    }
+    int SaveFormFile(const char* name, const char* path) {
+        if (ContentType() != MULTIPART_FORM_DATA) {
             return HTTP_STATUS_BAD_REQUEST;
         }
         const FormData& formdata = form[name];
         if (formdata.content.empty()) {
             return HTTP_STATUS_BAD_REQUEST;
         }
+        std::string filepath(path);
+        if (HPath::isdir(path)) {
+            filepath = HPath::join(filepath, formdata.filename);
+        }
         HFile file;
-        if (file.open(filepath, "wb") != 0) {
+        if (file.open(filepath.c_str(), "wb") != 0) {
             return HTTP_STATUS_INTERNAL_SERVER_ERROR;
         }
         file.write(formdata.content.data(), formdata.content.size());
         return 200;
+    }
+
+    // Content-Type: application/x-www-form-urlencoded
+    template<typename T>
+    void SetUrlEncoded(const char* key, const T& t) {
+        kv[key] = hv::to_string(t);
+    }
+    const hv::KeyValue& GetUrlEncoded() {
+        if (kv.empty() && ContentType() == X_WWW_FORM_URLENCODED) {
+            ParseBody();
+        }
+        return kv;
+    }
+    std::string GetUrlEncoded(const char* key, const std::string& defvalue = "") {
+        if (kv.empty() && ContentType() == X_WWW_FORM_URLENCODED) {
+            ParseBody();
+        }
+        auto iter = kv.find(key);
+        return iter == kv.end() ? defvalue : iter->second;
     }
 #endif
 
@@ -195,14 +263,24 @@ public:
     // body.size -> content_length <-> headers Content-Length
     void FillContentLength();
 
+    bool IsChunked();
     bool IsKeepAlive();
 
+    // headers
+    void SetHeader(const char* key, const std::string& value) {
+        headers[key] = value;
+    }
     std::string GetHeader(const char* key, const std::string& defvalue = "") {
         auto iter = headers.find(key);
-        if (iter != headers.end()) {
-            return iter->second;
-        }
-        return defvalue;
+        return iter == headers.end() ? defvalue : iter->second;
+    }
+
+    // body
+    void SetBody(const std::string& body) {
+        this->body = body;
+    }
+    const std::string& Body() {
+        return this->body;
     }
 
     // headers -> string
@@ -235,6 +313,10 @@ public:
             FillContentType();
         }
         return content_type;
+    }
+
+    void AddCookie(const HttpCookie& cookie) {
+        cookies.push_back(cookie);
     }
 
     int String(const std::string& str) {
@@ -272,6 +354,15 @@ public:
         file.readall(body);
         return 200;
     }
+
+    int SaveFile(const char* filepath) {
+        HFile file;
+        if (file.open(filepath, "wb") != 0) {
+            return HTTP_STATUS_NOT_FOUND;
+        }
+        file.write(body.data(), body.size());
+        return 200;
+    }
 };
 
 #define DEFAULT_USER_AGENT "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36"
@@ -289,7 +380,8 @@ public:
     // client_addr
     HNetAddr            client_addr;    // for http server save client addr of request
     int                 timeout;        // for http client timeout
-    bool                redirect;       // for http_client redirect
+    unsigned            redirect: 1;    // for http_client redirect
+    unsigned            proxy   : 1;    // for http_client proxy
 
     HttpRequest() : HttpMessage() {
         type = HTTP_REQUEST;
@@ -305,7 +397,8 @@ public:
         port = DEFAULT_HTTP_PORT;
         path = "/";
         timeout = 0;
-        redirect = true;
+        redirect = 1;
+        proxy = 0;
     }
 
     virtual void Reset() {
@@ -317,19 +410,33 @@ public:
 
     virtual std::string Dump(bool is_dump_headers = true, bool is_dump_body = false);
 
+    // method
+    void SetMethod(const char* method) {
+        this->method = http_method_enum(method);
+    }
+    const char* Method() {
+        return http_method_str(method);
+    }
+
+    // scheme
+    bool isHttps() {
+        return strncmp(scheme.c_str(), "https", 5) == 0 ||
+               strncmp(url.c_str(), "https://", 8) == 0;
+    }
+
+    // url
+    void SetUrl(const char* url) {
+        this->url = url;
+    }
+    const std::string& Url() {
+        return url;
+    }
     // structed url -> url
     void DumpUrl();
     // url -> structed url
     void ParseUrl();
 
-    std::string Host() {
-        auto iter = headers.find("Host");
-        if (iter != headers.end()) {
-            host = iter->second;
-        }
-        return host;
-    }
-
+    // /path
     std::string Path() {
         const char* s = path.c_str();
         const char* e = s;
@@ -337,17 +444,27 @@ public:
         return std::string(s, e);
     }
 
+    // ?query_params
+    void SetParam(const char* key, const std::string& value) {
+        query_params[key] = value;
+    }
     std::string GetParam(const char* key, const std::string& defvalue = "") {
         auto iter = query_params.find(key);
-        if (iter != query_params.end()) {
-            return iter->second;
-        }
-        return defvalue;
+        return iter == query_params.end() ? defvalue : iter->second;
     }
+
+    // Host:
+    std::string Host() {
+        auto iter = headers.find("Host");
+        return iter == headers.end() ? host : iter->second;
+    }
+    void FillHost(const char* host, int port = DEFAULT_HTTP_PORT);
+    void SetHost(const char* host, int port = DEFAULT_HTTP_PORT);
+    void SetProxy(const char* host, int port);
 
     // Range: bytes=0-4095
     void SetRange(long from = 0, long to = -1) {
-        headers["Range"] = asprintf("bytes=%ld-%ld", from, to);
+        headers["Range"] = hv::asprintf("bytes=%ld-%ld", from, to);
     }
     bool GetRange(long& from, long& to) {
         auto iter = headers.find("Range");
@@ -359,7 +476,7 @@ public:
         return false;
     }
 
-    // Cookie
+    // Cookie:
     void SetCookie(const HttpCookie& cookie) {
         headers["Cookie"] = cookie.dump();
     }
@@ -395,7 +512,7 @@ public:
 
     // Content-Range: bytes 0-4095/10240000
     void SetRange(long from, long to, long total) {
-        headers["Content-Range"] = asprintf("bytes %ld-%ld/%ld", from, to, total);
+        headers["Content-Range"] = hv::asprintf("bytes %ld-%ld/%ld", from, to, total);
     }
     bool GetRange(long& from, long& to, long& total) {
         auto iter = headers.find("Content-Range");

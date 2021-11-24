@@ -27,7 +27,9 @@ HV_INLINE int socket_errno() {
 HV_EXPORT const char* socket_strerror(int err);
 
 #ifdef OS_WIN
+
 typedef int socklen_t;
+
 HV_INLINE int blocking(int sockfd) {
     unsigned long nb = 0;
     return ioctlsocket(sockfd, FIONBIO, &nb);
@@ -36,19 +38,36 @@ HV_INLINE int nonblocking(int sockfd) {
     unsigned long nb = 1;
     return ioctlsocket(sockfd, FIONBIO, &nb);
 }
+
+#ifndef poll
 #define poll        WSAPoll
+#endif
+
 #undef  EAGAIN
 #define EAGAIN      WSAEWOULDBLOCK
+
 #undef  EINPROGRESS
 #define EINPROGRESS WSAEINPROGRESS
+
 #undef  ENOTSOCK
 #define ENOTSOCK    WSAENOTSOCK
+
+#undef  EMSGSIZE
+#define EMSGSIZE    WSAEMSGSIZE
+
 #else
+
 #define blocking(s)     fcntl(s, F_SETFL, fcntl(s, F_GETFL) & ~O_NONBLOCK)
 #define nonblocking(s)  fcntl(s, F_SETFL, fcntl(s, F_GETFL) |  O_NONBLOCK)
+
 typedef int         SOCKET;
 #define INVALID_SOCKET  -1
-#define closesocket close
+#define closesocket(fd) close(fd)
+
+#endif
+
+#ifndef SAFE_CLOSESOCKET
+#define SAFE_CLOSESOCKET(fd)  do {if ((fd) >= 0) {closesocket(fd); (fd) = -1;}} while(0)
 #endif
 
 //-----------------------------sockaddr_u----------------------------------------------
@@ -60,6 +79,12 @@ typedef union {
     struct sockaddr_un  sun;
 #endif
 } sockaddr_u;
+
+HV_EXPORT bool is_ipv4(const char* host);
+HV_EXPORT bool is_ipv6(const char* host);
+HV_INLINE bool is_ipaddr(const char* host) {
+    return is_ipv4(host) || is_ipv6(host);
+}
 
 // @param host: domain or ip
 // @retval 0:succeed

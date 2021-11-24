@@ -1,9 +1,7 @@
 /*
  * TcpClient_test.cpp
  *
- * @build
- * make libhv && sudo make install
- * g++ -std=c++11 TcpClient_test.cpp -o TcpClient_test -I/usr/local/include/hv -lhv -lpthread
+ * @build: make evpp
  *
  */
 
@@ -35,7 +33,7 @@ int main(int argc, char* argv[]) {
                     char str[DATETIME_FMT_BUFLEN] = {0};
                     datetime_t dt = datetime_now();
                     datetime_fmt(&dt, str);
-                    channel->send(str);
+                    channel->write(str);
                 } else {
                     killTimer(timerID);
                 }
@@ -46,9 +44,6 @@ int main(int argc, char* argv[]) {
     };
     cli.onMessage = [](const SocketChannelPtr& channel, Buffer* buf) {
         printf("< %.*s\n", (int)buf->size(), (char*)buf->data());
-    };
-    cli.onWriteComplete = [](const SocketChannelPtr& channel, Buffer* buf) {
-        printf("> %.*s\n", (int)buf->size(), (char*)buf->data());
     };
     // reconnect: 1,2,4,8,10,10,10...
     ReconnectInfo reconn;

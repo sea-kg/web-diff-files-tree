@@ -26,6 +26,16 @@ const char* socket_strerror(int err) {
 #endif
 }
 
+bool is_ipv4(const char* host) {
+    struct sockaddr_in sin;
+    return inet_pton(AF_INET, host, &sin) == 1;
+}
+
+bool is_ipv6(const char* host) {
+    struct sockaddr_in6 sin6;
+    return inet_pton(AF_INET6, host, &sin6) == 1;
+}
+
 int Resolver(const char* host, sockaddr_u* addr) {
     if (inet_pton(AF_INET, host, &addr->sin.sin_addr) == 1) {
         addr->sa.sa_family = AF_INET; // host is ipv4, so easy ;)
@@ -35,7 +45,6 @@ int Resolver(const char* host, sockaddr_u* addr) {
 #ifdef ENABLE_IPV6
     if (inet_pton(AF_INET6, host, &addr->sin6.sin6_addr) == 1) {
         addr->sa.sa_family = AF_INET6; // host is ipv6
-        return 0;
     }
     struct addrinfo* ais = NULL;
     struct addrinfo hint;
@@ -102,6 +111,12 @@ void sockaddr_set_port(sockaddr_u* addr, int port) {
 }
 
 int sockaddr_set_ipport(sockaddr_u* addr, const char* host, int port) {
+#ifdef ENABLE_UDS
+    if (port <= 0) {
+        sockaddr_set_path(addr, host);
+        return 0;
+    }
+#endif
     int ret = sockaddr_set_ip(addr, host);
     if (ret != 0) return ret;
     sockaddr_set_port(addr, port);
@@ -207,7 +222,7 @@ static int sockaddr_connect(sockaddr_u* peeraddr, int nonblock) {
 #else
     if (ret < 0 && socket_errno() != EINPROGRESS) {
 #endif
-        perror("connect");
+        // perror("connect");
         closesocket(connfd);
         return socket_errno_negative();
     }

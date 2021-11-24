@@ -1,9 +1,7 @@
 /*
  * UdpClient_test.cpp
  *
- * @build
- * make libhv && sudo make install
- * g++ -std=c++11 UdpClient_test.cpp -o UdpClient_test -I/usr/local/include/hv -lhv -lpthread
+ * @build: make evpp
  *
  */
 
@@ -27,9 +25,6 @@ int main(int argc, char* argv[]) {
     printf("client sendto port %d, sockfd=%d ...\n", port, sockfd);
     cli.onMessage = [](const SocketChannelPtr& channel, Buffer* buf) {
         printf("< %.*s\n", (int)buf->size(), (char*)buf->data());
-    };
-    cli.onWriteComplete = [](const SocketChannelPtr& channel, Buffer* buf) {
-        printf("> %.*s\n", (int)buf->size(), (char*)buf->data());
     };
     cli.start();
 

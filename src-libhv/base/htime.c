@@ -86,7 +86,7 @@ time_t datetime_mktime(datetime_t* dt) {
     time(&ts);
     struct tm* ptm = localtime(&ts);
     memcpy(&tm, ptm, sizeof(struct tm));
-    tm.tm_yday  = dt->year   - 1900;
+    tm.tm_year  = dt->year   - 1900;
     tm.tm_mon   = dt->month  - 1;
     tm.tm_mday  = dt->day;
     tm.tm_hour  = dt->hour;
@@ -158,6 +158,14 @@ char* datetime_fmt(datetime_t* dt, char* buf) {
     return buf;
 }
 
+char* datetime_fmt_iso(datetime_t* dt, char* buf) {
+    sprintf(buf, DATETIME_FMT_ISO,
+        dt->year, dt->month, dt->day,
+        dt->hour, dt->min, dt->sec,
+        dt->ms);
+    return buf;
+}
+
 char* gmtime_fmt(time_t time, char* buf) {
     struct tm* tm = gmtime(&time);
     //strftime(buf, GMTIME_FMT_BUFLEN, "%a, %d %b %Y %H:%M:%S GMT", tm);
@@ -206,13 +214,13 @@ datetime_t hv_compile_datetime() {
 
 time_t cron_next_timeout(int minute, int hour, int day, int week, int month) {
     enum {
-        UNKOWN,
+        MINUTELY,
         HOURLY,
         DAILY,
         WEEKLY,
         MONTHLY,
         YEARLY,
-    } period_type = UNKOWN;
+    } period_type = MINUTELY;
     struct tm tm;
     time_t tt;
     time(&tt);
@@ -240,10 +248,6 @@ time_t cron_next_timeout(int minute, int hour, int day, int week, int month) {
         }
     }
 
-    if (period_type == UNKOWN) {
-        return -1;
-    }
-
     tt_round = mktime(&tm);
     if (week >= 0) {
         tt_round = tt + (week-tm.tm_wday)*SECONDS_PER_DAY;
@@ -253,6 +257,9 @@ time_t cron_next_timeout(int minute, int hour, int day, int week, int month) {
     }
 
     switch(period_type) {
+    case MINUTELY:
+        tt_round += SECONDS_PER_MINUTE;
+        return tt_round;
     case HOURLY:
         tt_round += SECONDS_PER_HOUR;
         return tt_round;

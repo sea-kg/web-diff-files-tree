@@ -7,6 +7,10 @@
 #include "hurl.h"
 #include "http_parser.h" // for http_parser_url
 
+using namespace hv;
+
+http_headers DefaultHeaders;
+http_body    NoBody;
 char HttpMessage::s_date[32] = {0};
 
 bool HttpCookie::parse(const std::string& str) {
@@ -89,7 +93,7 @@ std::string HttpCookie::dump() const {
 // NOTE: json ignore number/string, 123/"123"
 
 std::string HttpMessage::GetString(const char* key, const std::string& defvalue) {
-    switch (content_type) {
+    switch (ContentType()) {
     case APPLICATION_JSON:
     {
         if (!json.is_object()) {
@@ -138,7 +142,7 @@ std::string HttpMessage::GetString(const char* key, const std::string& defvalue)
 
 template<>
 HV_EXPORT int64_t HttpMessage::Get(const char* key, int64_t defvalue) {
-    if (content_type == APPLICATION_JSON) {
+    if (ContentType() == APPLICATION_JSON) {
         if (!json.is_object()) {
             return defvalue;
         }
@@ -168,8 +172,13 @@ HV_EXPORT int64_t HttpMessage::Get(const char* key, int64_t defvalue) {
 }
 
 template<>
+HV_EXPORT int HttpMessage::Get(const char* key, int defvalue) {
+    return (int)Get<int64_t>(key, defvalue);
+}
+
+template<>
 HV_EXPORT double HttpMessage::Get(const char* key, double defvalue) {
-    if (content_type == APPLICATION_JSON) {
+    if (ContentType() == APPLICATION_JSON) {
         if (!json.is_object()) {
             return defvalue;
         }
@@ -195,8 +204,13 @@ HV_EXPORT double HttpMessage::Get(const char* key, double defvalue) {
 }
 
 template<>
+HV_EXPORT float HttpMessage::Get(const char* key, float defvalue) {
+    return (float)Get<double>(key, defvalue);
+}
+
+template<>
 HV_EXPORT bool HttpMessage::Get(const char* key, bool defvalue) {
-    if (content_type == APPLICATION_JSON) {
+    if (ContentType() == APPLICATION_JSON) {
         if (!json.is_object()) {
             return defvalue;
         }
@@ -285,19 +299,18 @@ void HttpMessage::FillContentLength() {
     if (iter != headers.end()) {
         content_length = atoi(iter->second.c_str());
     }
-
-    if (iter == headers.end() || content_length == 0) {
-        if (content_length == 0) {
-            content_length = body.size();
-        }
-        if (content_length == 0) {
-            DumpBody();
-            content_length = body.size();
-        }
-        char sz[64];
-        snprintf(sz, sizeof(sz), "%d", content_length);
-        headers["Content-Length"] = sz;
+    if (content_length == 0) {
+        DumpBody();
+        content_length = body.size();
     }
+    if (iter == headers.end() && content_length != 0 && !IsChunked()) {
+        headers["Content-Length"] = hv::to_string(content_length);
+    }
+}
+
+bool HttpMessage::IsChunked() {
+    auto iter = headers.find("Transfer-Encoding");
+    return iter == headers.end() ? false : stricmp(iter->second.c_str(), "chunked") == 0;
 }
 
 bool HttpMessage::IsKeepAlive() {
@@ -413,14 +426,14 @@ int HttpMessage::ParseBody() {
     {
         auto iter = headers.find("Content-Type");
         if (iter == headers.end()) {
-            return false;
+            return -1;
         }
         const char* boundary = strstr(iter->second.c_str(), "boundary=");
         if (boundary == NULL) {
-            return false;
+            return -1;
         }
         boundary += strlen("boundary=");
-        string strBoundary(boundary);
+        std::string strBoundary(boundary);
         strBoundary = trim_pairs(strBoundary, "\"\"\'\'");
         return parse_multipart(body, form, strBoundary.c_str());
     }
@@ -447,16 +460,15 @@ std::string HttpMessage::Dump(bool is_dump_headers, bool is_dump_body) {
 }
 
 void HttpRequest::DumpUrl() {
+    std::string str;
     if (url.size() != 0 && strstr(url.c_str(), "://") != NULL) {
         // have been complete url
-        return;
+        goto query;
     }
-    std::string str;
     // scheme://
     str = scheme;
     str += "://";
     // host:port
-    char c_str[256] = {0};
     if (url.size() != 0 && *url.c_str() != '/') {
         // url begin with host
         str += url;
@@ -468,8 +480,7 @@ void HttpRequest::DumpUrl() {
             str += Host();
         }
         else {
-            snprintf(c_str, sizeof(c_str), "%s:%d", host.c_str(), port);
-            str += c_str;
+            str += hv::asprintf("%s:%d", host.c_str(), port);
         }
     }
     // /path
@@ -483,13 +494,14 @@ void HttpRequest::DumpUrl() {
     else if (url.size() == 0) {
         str += '/';
     }
-    // ?query
-    if (strchr(str.c_str(), '?') == NULL &&
-        query_params.size() != 0) {
-        str += '?';
-        str += dump_query_params(query_params);
-    }
     url = str;
+query:
+    // ?query
+    if (strchr(url.c_str(), '?') == NULL &&
+        query_params.size() != 0) {
+        url += '?';
+        url += dump_query_params(query_params);
+    }
 }
 
 void HttpRequest::ParseUrl() {
@@ -498,13 +510,20 @@ void HttpRequest::ParseUrl() {
     http_parser_url_init(&parser);
     http_parser_parse_url(url.c_str(), url.size(), 0, &parser);
     // scheme
-    scheme = url.substr(parser.field_data[UF_SCHEMA].off, parser.field_data[UF_SCHEMA].len);
+    std::string scheme_ = url.substr(parser.field_data[UF_SCHEMA].off, parser.field_data[UF_SCHEMA].len);
     // host
+    std::string host_(host);
     if (parser.field_set & (1<<UF_HOST)) {
-        host = url.substr(parser.field_data[UF_HOST].off, parser.field_data[UF_HOST].len);
+        host_ = url.substr(parser.field_data[UF_HOST].off, parser.field_data[UF_HOST].len);
     }
     // port
-    port = parser.port ? parser.port : strcmp(scheme.c_str(), "https") ? DEFAULT_HTTP_PORT : DEFAULT_HTTPS_PORT;
+    int port_ = parser.port ? parser.port : strcmp(scheme_.c_str(), "https") ? DEFAULT_HTTP_PORT : DEFAULT_HTTPS_PORT;
+    if (!proxy) {
+        scheme = scheme_;
+        host = host_;
+        port = port_;
+    }
+    FillHost(host_.c_str(), port_);
     // path
     if (parser.field_set & (1<<UF_PATH)) {
         const char* sp = url.c_str() + parser.field_data[UF_PATH].off;
@@ -523,6 +542,31 @@ void HttpRequest::ParseUrl() {
     }
 }
 
+void HttpRequest::FillHost(const char* host, int port) {
+    if (headers.find("Host") == headers.end()) {
+        if (port == 0 ||
+            port == DEFAULT_HTTP_PORT ||
+            port == DEFAULT_HTTPS_PORT) {
+            headers["Host"] = host;
+        } else {
+            headers["Host"] = asprintf("%s:%d", host, port);
+        }
+    }
+}
+
+void HttpRequest::SetHost(const char* host, int port) {
+    this->host = host;
+    this->port = port;
+    FillHost(host, port);
+}
+
+void HttpRequest::SetProxy(const char* host, int port) {
+    this->scheme = "http";
+    this->host = host;
+    this->port = port;
+    proxy = 1;
+}
+
 std::string HttpRequest::Dump(bool is_dump_headers, bool is_dump_body) {
     ParseUrl();
 
@@ -530,20 +574,10 @@ std::string HttpRequest::Dump(bool is_dump_headers, bool is_dump_body) {
     str.reserve(MAX(512, path.size() + 128));
     // GET / HTTP/1.1\r\n
     str = asprintf("%s %s HTTP/%d.%d\r\n",
-            http_method_str(method), path.c_str(),
+            http_method_str(method),
+            proxy ? url.c_str() : path.c_str(),
             (int)http_major, (int)http_minor);
     if (is_dump_headers) {
-        // Host:
-        if (headers.find("Host") == headers.end()) {
-            if (port == 0 ||
-                port == DEFAULT_HTTP_PORT ||
-                port == DEFAULT_HTTPS_PORT) {
-                headers["Host"] = host;
-            }
-            else {
-                headers["Host"] = asprintf("%s:%d", host.c_str(), port);
-            }
-        }
         DumpHeaders(str);
     }
     str += "\r\n";

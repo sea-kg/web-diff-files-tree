@@ -12,13 +12,15 @@ enum http_parser_state {
     HP_HEADER_FIELD,
     HP_HEADER_VALUE,
     HP_HEADERS_COMPLETE,
+    HP_CHUNK_HEADER,
     HP_BODY,
+    HP_CHUNK_COMPLETE,
     HP_MESSAGE_COMPLETE
 };
 
 class Http1Parser : public HttpParser {
 public:
-    static http_parser_settings*    cbs;
+    static http_parser_settings     cbs;
     http_parser                     parser;
     int                             flags;
     http_parser_state               state;
@@ -62,7 +64,7 @@ public:
     }
 
     virtual int FeedRecvData(const char* data, size_t len) {
-        return http_parser_execute(&parser, cbs, data, len);
+        return http_parser_execute(&parser, &cbs, data, len);
     }
 
     virtual int  GetState() {

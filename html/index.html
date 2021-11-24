@@ -208,7 +208,10 @@ body {
         if (left_version_id == -1 && right_version_id == -1) {
           $('#compare_versions').show();
           $('#diff_versions').hide();
-          api.versions_all().fail(function(error) {
+          api.versions_all({
+            "some": "some",
+            "some2": "some2",
+          }).fail(function(error) {
             console.log(error);
           }).done(function(result) {
             var _subhtml = '';

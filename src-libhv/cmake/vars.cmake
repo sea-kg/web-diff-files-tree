@@ -14,10 +14,19 @@ set(BASE_HEADERS
     base/hthread.h
     base/hmutex.h
     base/hsocket.h
-    base/hssl.h
     base/hlog.h
     base/hbuf.h
+    base/hmain.h
     base/hendian.h
+)
+
+set(SSL_HEADERS
+    ssl/hssl.h
+)
+
+set(EVENT_HEADERS
+    event/hloop.h
+    event/nlog.h
 )
 
 set(UTIL_HEADERS
@@ -26,18 +35,13 @@ set(UTIL_HEADERS
     util/sha1.h
 )
 
-set(EVENT_HEADERS
-    event/hloop.h
-    event/nlog.h
-)
-
 set(CPPUTIL_HEADERS
     cpputil/hmap.h
     cpputil/hstring.h
     cpputil/hfile.h
+    cpputil/hpath.h
     cpputil/hdir.h
     cpputil/hurl.h
-    cpputil/hmain.h
     cpputil/hscope.h
     cpputil/hthreadpool.h
     cpputil/hobjectpool.h
@@ -89,8 +93,9 @@ set(HTTP_CLIENT_HEADERS
     http/client/WebSocketClient.h)
 
 set(HTTP_SERVER_HEADERS
-    http/server/HttpService.h
     http/server/HttpServer.h
+    http/server/HttpService.h
+    http/server/HttpContext.h
     http/server/HttpResponseWriter.h
     http/server/WebSocketServer.h
 )

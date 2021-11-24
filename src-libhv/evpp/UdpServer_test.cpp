@@ -1,9 +1,7 @@
 /*
  * UdpServer_test.cpp
  *
- * @build
- * make libhv && sudo make install
- * g++ -std=c++11 UdpServer_test.cpp -o UdpServer_test -I/usr/local/include/hv -lhv -lpthread
+ * @build: make evpp
  *
  */
 
@@ -28,9 +26,6 @@ int main(int argc, char* argv[]) {
         // echo
         printf("< %.*s\n", (int)buf->size(), (char*)buf->data());
         channel->write(buf);
-    };
-    srv.onWriteComplete = [](const SocketChannelPtr& channel, Buffer* buf) {
-        printf("> %.*s\n", (int)buf->size(), (char*)buf->data());
     };
     srv.start();
 

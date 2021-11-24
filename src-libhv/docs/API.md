@@ -37,7 +37,6 @@
 - IS_HEX
 - IS_LOWER, IS_UPPER
 - LOWER, UPPER
-- LD, LU, LLD, LLU
 - MAKEWORD, LOBYTE, HIBYTE
 - MAKELONG, LOWORD, HIWORD
 - MAKEINT64, LOINT, HIINT
@@ -91,6 +90,8 @@
 ### hmath.h
 - floor2e
 - ceil2e
+- varint_encode
+- varint_decode
 
 ### hbase.h
 - safe_malloc
@@ -113,6 +114,10 @@
 - hv_suffixname
 - hv_mkdir_p
 - hv_rmdir_p
+- hv_exists
+- hv_isdir
+- hv_isfile
+- hv_islink
 - getboolean
 - get_executable_path
 - get_executable_dir
@@ -247,24 +252,52 @@
 - class HVLBuf
 - class HRingBuf
 
+### hmain.h
+- main_ctx_init
+- parse_opt
+- parse_opt_long
+- get_arg
+- get_env
+- setproctitle
+- signal_init
+- signal_handle
+- create_pidfile
+- delete_pidfile
+- getpid_form_pidfile
+- master_workers_run
+
 ### hstring.h
+- to_string
+- from_string
+- toupper
+- tolower
+- reverse
+- startswith
+- endswith
+- contains
 - asprintf
 - trim
-- trimL
-- trimR
+- ltrim
+- rtrim
 - trim_pairs
 - split
 - splitKV
 - replace
+- replaceAll
+
+### hfile.h
+- class HFile
+
+### hpath.h
+- exists
+- isdir
+- isfile
+- islink
 - basename
 - dirname
 - filename
 - suffixname
-- hv::to_string
-- hv::from_string
-
-### hfile.h
-- class HFile
+- join
 
 ### hdir.h
 - listdir
@@ -287,30 +320,27 @@
 
 ## utils
 ### md5.h
-- MD5Init
-- MD5Update
-- MD5Final
+- HV_MD5Init
+- HV_MD5Update
+- HV_MD5Final
+- hv_md5
+- hv_md5_hex
+
+### sha1.h
+- HV_SHA1Init
+- HV_SHA1Update
+- HV_SHA1Final
+- HV_SHA1
+- hv_sha1
+- hv_sha1_hex
 
 ### base64.h
-- base64_decode
-- base64_encode
+- hv_base64_decode
+- hv_base64_encode
 
 ### json.hpp
-
-### hmain.h
-- main_ctx_init
-- parse_opt
-- parse_opt_long
-- get_arg
-- get_env
-- setproctitle
-- signal_init
-- signal_handle
-- signal_handler
-- create_pidfile
-- delete_pidfile
-- getpid_form_pidfile
-- master_workers_run
+- json::parse
+- json::dump
 
 ### singleton.h
 - DISABLE_COPY
@@ -332,12 +362,16 @@
 - hloop_stop
 - hloop_pause
 - hloop_resume
+- hloop_status
+- hloop_pid
+- hloop_tid
 - hloop_now
 - hloop_now_ms
-- hloop_now_hrtime
+- hloop_now_us
 - hloop_update_time
 - hloop_set_userdata
 - hloop_userdata
+- hloop_wakeup
 - hloop_post_event
 - hevent_loop
 - hevent_type
@@ -357,26 +391,62 @@
 - hio_add
 - hio_del
 - hio_get
+- hio_detach
+- hio_attach
 - hio_read
+- hio_read_start
+- hio_read_stop
+- hio_read_once
+- hio_read_until
 - hio_write
 - hio_close
 - hio_accept
 - hio_connect
 - hio_fd
+- hio_id
 - hio_type
 - hio_error
 - hio_localaddr
 - hio_peeraddr
+- hio_events
+- hio_revents
+- hio_is_opened
+- hio_is_closed
+- hio_enable_ssl
+- hio_is_ssl
+- hio_get_ssl
+- hio_set_ssl
 - hio_setcb_accept
 - hio_setcb_connect
 - hio_setcb_read
 - hio_setcb_write
 - hio_setcb_close
+- hio_getcb_accept
+- hio_getcb_connect
+- hio_getcb_read
+- hio_getcb_write
+- hio_getcb_close
+- hio_set_type
 - hio_set_localaddr
 - hio_set_peeraddr
 - hio_set_readbuf
-- hio_set_type
-- hio_enable_ssl
+- hio_set_connect_timeout
+- hio_set_close_timeout
+- hio_set_keepalive_timeout
+- hio_set_heartbeat
+- hio_set_unpack
+- hio_unset_unpack
+- hio_read_upstream
+- hio_write_upstream
+- hio_close_upstream
+- hio_setup_upstream
+- hio_get_upstream
+- hio_setup_tcp_upstream
+- hio_setup_ssl_upstream
+- hio_setup_udp_upstream
+- hio_create_socket
+- hio_context
+- hio_set_context
 - htimer_add
 - htimer_add_period
 - htimer_del
@@ -477,6 +547,10 @@
 - http_client_del_header
 - http_client_get_header
 - http_client_clear_headers
+- http_client_set_http_proxy
+- http_client_set_https_proxy
+- http_client_add_no_proxy
+- class HttpClient
 
 ### requests.h
 - requests::request
@@ -486,12 +560,22 @@
 - requests::patch
 - requests::Delete
 - requests::head
-- requests::options
 - requests::async
+
+### axios.h
+- axios::axios
+- axios::get
+- axios::post
+- axios::put
+- axios::patch
+- axios::Delete
+- axios::head
+- axios::async
 
 ### HttpServer.h
 - http_server_run
 - http_server_stop
+- class HttpServer
 
 ### WebSocketClient.h
 - class WebSocketClient
@@ -499,6 +583,7 @@
 ### WebSocketServer.h
 - websocket_server_run
 - websocket_server_stop
+- class WebSocketServer
 
 ## other
 - class HThreadPool

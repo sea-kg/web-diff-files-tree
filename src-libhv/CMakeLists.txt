@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.6)
 
-project(hv VERSION 1.1.1)
+project(hv VERSION 1.2.2)
 
-option(BUILD_SHARED "build shared library" OFF)
+option(BUILD_SHARED "build shared library" ON)
 option(BUILD_STATIC "build static library" ON)
 
-option(BUILD_EXAMPLES "build examples" OFF)
+option(BUILD_EXAMPLES "build examples" ON)
 option(BUILD_UNITTEST "build unittest" OFF)
 
 # see config.ini
@@ -25,7 +25,10 @@ option(WITH_CURL "with curl library" OFF)
 option(WITH_NGHTTP2 "with nghttp2 library" OFF)
 
 option(WITH_OPENSSL "with openssl library" OFF)
+option(WITH_GNUTLS  "with gnutls library"  OFF)
 option(WITH_MBEDTLS "with mbedtls library" OFF)
+
+option(WITH_KCP "with kcp" OFF)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
 include(utils)
@@ -67,13 +70,22 @@ set(INCDIR include)
 set(SRCDIR src)
 set(LIBDIR lib)
 set(BINDIR bin)
-set(LIBRARY_OUTPUT_PATH ${LIBDIR})
-set(EXECUTABLE_OUTPUT_PATH ${BINDIR})
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${LIBDIR})
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${LIBDIR})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${BINDIR})
+message(STATUS "CMAKE_LIBRARY_OUTPUT_DIRECTORY=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
 
 set(INCDIRS . include 3rd/include)
 set(LIBDIRS . lib 3rd/lib)
 include_directories(${INCDIRS} ${SRCDIR})
 link_directories(${LIBDIRS})
+
+message(STATUS "CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
+if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+    add_definitions(-DDEBUG)
+else()
+    add_definitions(-DNDEBUG)
+endif()
 
 if(ENABLE_IPV6)
     add_definitions(-DENABLE_IPV6)
@@ -105,6 +117,11 @@ if(WITH_OPENSSL)
     set(LIBS ${LIBS} ssl crypto)
 endif()
 
+if(WITH_GNUTLS)
+    add_definitions(-DWITH_GNUTLS)
+    set(LIBS ${LIBS} gnutls)
+endif()
+
 if(WITH_MBEDTLS)
     add_definitions(-DWITH_MBEDTLS)
     set(LIBS ${LIBS} mbedtls mbedx509 mbedcrypto)
@@ -119,22 +136,28 @@ if(WIN32)
     endif()
 endif()
 
-if(UNIX)
+if(ANDROID)
+    set(LIBS ${LIBS} log)
+elseif(UNIX)
     set(LIBS ${LIBS} pthread m dl)
     if(CMAKE_COMPILER_IS_GNUCC)
         set(LIBS ${LIBS} rt)
     endif()
 endif()
 
-if(ANDROID)
-    set(LIBS ${LIBS} log)
+if(APPLE)
+    set(LIBS ${LIBS} "-framework CoreFoundation" "-framework Security")
 endif()
 
 # see Makefile
-set(ALL_SRCDIRS . base util event protocol cpputil evpp http http/client http/server)
-set(LIBHV_SRCDIRS . base util event)
+set(ALL_SRCDIRS . base ssl event event/kcp util cpputil evpp protocol http http/client http/server)
+set(CORE_SRCDIRS . base ssl event)
+if(WITH_KCP)
+    set(CORE_SRCDIRS ${CORE_SRCDIRS} event/kcp)
+endif()
+set(LIBHV_SRCDIRS ${CORE_SRCDIRS} util)
 set(LIBHV_HEADERS hv.h hconfig.h hexport.h)
-set(LIBHV_HEADERS ${LIBHV_HEADERS} ${BASE_HEADERS} ${UTIL_HEADERS} ${EVENT_HEADERS})
+set(LIBHV_HEADERS ${LIBHV_HEADERS} ${BASE_HEADERS} ${SSL_HEADERS} ${EVENT_HEADERS} ${UTIL_HEADERS})
 
 if(WITH_PROTOCOL)
     set(LIBHV_HEADERS ${LIBHV_HEADERS} ${PROTOCOL_HEADERS})
@@ -156,6 +179,10 @@ if(WITH_EVPP)
             set(LIBHV_SRCDIRS ${LIBHV_SRCDIRS} http/client)
         endif()
     endif()
+
+    if(CMAKE_SYSTEM_NAME MATCHES "Linux" AND CMAKE_COMPILER_IS_GNUCC)
+        set(LIBS ${LIBS} stdc++)
+    endif()
 endif()
 
 list_source_directories(LIBHV_SRCS ${LIBHV_SRCDIRS})
@@ -165,7 +192,10 @@ if(BUILD_SHARED)
     target_compile_definitions(hv PRIVATE HV_DYNAMICLIB)
     target_include_directories(hv PRIVATE ${LIBHV_SRCDIRS})
     target_link_libraries(hv ${LIBS})
-    install(TARGETS hv DESTINATION lib)
+    install(TARGETS hv
+        ARCHIVE DESTINATION lib
+        LIBRARY DESTINATION lib
+        RUNTIME DESTINATION bin)
     add_custom_target(libhv DEPENDS hv)
 endif()
 
@@ -180,8 +210,18 @@ endif()
 file(INSTALL ${LIBHV_HEADERS} DESTINATION include/hv)
 install(FILES ${LIBHV_HEADERS} DESTINATION include/hv)
 
+if(BUILD_SHARED)
+    set(HV_LIBRARIES hv CACHE INTERNAL "link hv libraries")
+else()
+    set(HV_LIBRARIES hv_static ${LIBS} CACHE INTERNAL "link hv libraries")
+endif()
+
 if(BUILD_EXAMPLES)
     add_subdirectory(examples)
+    # for httpd -c etc/httpd.conf
+    file(INSTALL etc DESTINATION ${CMAKE_BINARY_DIR})
+    file(INSTALL etc DESTINATION ${CMAKE_BINARY_DIR}/bin)
+    file(INSTALL etc DESTINATION ${CMAKE_BINARY_DIR}/examples)
 endif()
 
 if(BUILD_UNITTEST)

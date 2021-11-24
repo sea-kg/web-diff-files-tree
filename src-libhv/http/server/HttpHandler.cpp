@@ -5,6 +5,31 @@
 #include "hlog.h"
 #include "http_page.h"
 
+int HttpHandler::customHttpHandler(const http_handler& handler) {
+    return invokeHttpHandler(&handler);
+}
+
+int HttpHandler::invokeHttpHandler(const http_handler* handler) {
+    int status_code = HTTP_STATUS_NOT_IMPLEMENTED;
+    if (handler->sync_handler) {
+        status_code = handler->sync_handler(req.get(), resp.get());
+    } else if (handler->async_handler) {
+        handler->async_handler(req, writer);
+        status_code = HTTP_STATUS_UNFINISHED;
+    } else if (handler->ctx_handler) {
+        HttpContextPtr ctx(new hv::HttpContext);
+        ctx->service = service;
+        ctx->request = req;
+        ctx->response = resp;
+        ctx->writer = writer;
+        status_code = handler->ctx_handler(ctx);
+        if (writer->state != hv::HttpResponseWriter::SEND_BEGIN) {
+            status_code = HTTP_STATUS_UNFINISHED;
+        }
+    }
+    return status_code;
+}
+
 int HttpHandler::HandleHttpRequest() {
     // preprocessor -> processor -> postprocessor
     int status_code = HTTP_STATUS_OK;
@@ -21,7 +46,7 @@ int HttpHandler::HandleHttpRequest() {
 preprocessor:
     state = HANDLE_BEGIN;
     if (service->preprocessor) {
-        status_code = service->preprocessor(pReq, pResp);
+        status_code = customHttpHandler(service->preprocessor);
         if (status_code != 0) {
             goto postprocessor;
         }
@@ -53,7 +78,7 @@ postprocessor:
         pResp->headers["Etag"] = fc->etag;
     }
     if (service->postprocessor) {
-        service->postprocessor(pReq, pResp);
+        customHttpHandler(service->postprocessor);
     }
 
     if (status_code == 0) {
@@ -65,48 +90,21 @@ postprocessor:
     return status_code;
 }
 
-int HttpHandler::customHttpHandler(http_handler& fn) {
-    HttpContextPtr ctx(new HttpContext);
-    ctx->service = service;
-    ctx->request = req;
-    ctx->response = resp;
-    ctx->writer = writer;
-    return fn(ctx);
-}
-
 int HttpHandler::defaultRequestHandler() {
     int status_code = HTTP_STATUS_OK;
-    http_sync_handler sync_handler = NULL;
-    http_async_handler async_handler = NULL;
-    http_handler ctx_handler = NULL;
+    http_handler* handler = NULL;
 
     if (service->api_handlers.size() != 0) {
-        service->GetApi(req.get(), &sync_handler, &async_handler, &ctx_handler);
+        service->GetApi(req.get(), &handler);
     }
 
-    if (sync_handler) {
-        // sync api handler
-        status_code = sync_handler(req.get(), resp.get());
-        if (status_code != 0) {
-            return status_code;
-        }
-    }
-    else if (async_handler) {
-        // async api handler
-        async_handler(req, writer);
-        status_code = 0;
-    }
-    else if (ctx_handler) {
-        // HttpContext handler
-        status_code = customHttpHandler(ctx_handler);
-        if (status_code != 0) {
-            return status_code;
-        }
+    if (handler) {
+        status_code = invokeHttpHandler(handler);
     }
     else if (req->method == HTTP_GET || req->method == HTTP_HEAD) {
         // static handler
         if (service->staticHandler) {
-            customHttpHandler(service->staticHandler);
+            status_code = customHttpHandler(service->staticHandler);
         }
         else if (service->document_root.size() != 0) {
             status_code = defaultStaticHandler();
@@ -143,7 +141,8 @@ int HttpHandler::defaultStaticHandler() {
     }
     if (!is_dir || is_index_of) {
         FileCache::OpenParam param;
-        param.need_read = req->method == HTTP_HEAD ? false : true;
+        bool has_range = req->headers.find("Range") != req->headers.end();
+        param.need_read = req->method == HTTP_HEAD || has_range ? false : true;
         param.path = req_path;
         fc = files->Open(filepath.c_str(), &param);
         if (fc == NULL) {

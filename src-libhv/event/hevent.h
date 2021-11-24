@@ -2,6 +2,9 @@
 #define HV_EVENT_H_
 
 #include "hloop.h"
+#include "iowatcher.h"
+#include "rudp.h"
+
 #include "hbuf.h"
 #include "hmutex.h"
 
@@ -10,7 +13,9 @@
 #include "heap.h"
 #include "queue.h"
 
-#define HLOOP_READ_BUFSIZE  8192
+#define HLOOP_READ_BUFSIZE          8192        // 8K
+#define READ_BUFSIZE_HIGH_WATER     65536       // 64K
+#define WRITE_QUEUE_HIGH_WATER      (1U << 23)  // 8M
 
 ARRAY_DECL(hio_t*, io_array);
 QUEUE_DECL(hevent_t, event_queue);
@@ -85,6 +90,7 @@ struct hperiod_s {
 };
 
 QUEUE_DECL(offset_buf_t, write_queue);
+// sizeof(struct hio_s)=344 on linux-x64
 struct hio_s {
     HEVENT_FIELDS
     // flags
@@ -98,18 +104,23 @@ struct hio_s {
     unsigned    recvfrom    :1;
     unsigned    sendto      :1;
     unsigned    close       :1;
+    unsigned    read_once   :1;     // for hio_read_once
+    unsigned    alloced_readbuf :1; // for hio_read_until, hio_set_unpack
 // public:
+    hio_type_e  io_type;
     uint32_t    id; // fd cannot be used as unique identifier, so we provide an id
     int         fd;
-    hio_type_e  io_type;
     int         error;
     int         events;
     int         revents;
     struct sockaddr*    localaddr;
     struct sockaddr*    peeraddr;
-    hbuf_t              readbuf;        // for hread
-    struct write_queue  write_queue;    // for hwrite
+    offset_buf_t        readbuf;        // for read
+    int                 read_until;     // for hio_read_until
+    uint32_t            small_readbytes_cnt; // for readbuf autosize
+    struct write_queue  write_queue;    // for write
     hrecursive_mutex_t  write_mutex;    // lock write and write_queue
+    uint32_t            write_queue_bytes;
     // callbacks
     hread_cb    read_cb;
     hwrite_cb   write_cb;
@@ -118,35 +129,83 @@ struct hio_s {
     hconnect_cb connect_cb;
     // timers
     int         connect_timeout;    // ms
-    htimer_t*   connect_timer;
     int         close_timeout;      // ms
-    htimer_t*   close_timer;
     int         keepalive_timeout;  // ms
-    htimer_t*   keepalive_timer;
     int         heartbeat_interval; // ms
     hio_send_heartbeat_fn heartbeat_fn;
+    htimer_t*   connect_timer;
+    htimer_t*   close_timer;
+    htimer_t*   keepalive_timer;
     htimer_t*   heartbeat_timer;
     // upstream
-    struct hio_s*   upstream_io;
+    struct hio_s*       upstream_io;    // for hio_setup_upstream
+    // unpack
+    unpack_setting_t*   unpack_setting; // for hio_set_unpack
+    // ssl
+    void*       ssl; // for hio_enable_ssl / hio_set_ssl
+    // context
+    void*       ctx; // for hio_context / hio_set_context
 // private:
+#if defined(EVENT_POLL) || defined(EVENT_KQUEUE)
     int         event_index[2]; // for poll,kqueue
+#endif
+
+#ifdef EVENT_IOCP
     void*       hovlp;          // for iocp/overlapio
-    void*       ssl;            // for SSL
-    void*       ctx;
+#endif
+
+#if WITH_RUDP
+    rudp_t          rudp;
+#if WITH_KCP
+    kcp_setting_t*  kcp_setting;
+#endif
+#endif
 };
 /*
  * hio lifeline:
+ *
  * fd =>
  * hio_get => HV_ALLOC_SIZEOF(io) => hio_init =>
- * hio_ready => hio_add => hio_del => hio_done =>
- * hio_close => hclose_cb =>
- * hio_free => HV_FREE(io)
+ *
+ * hio_ready => hio_add => hio_read_cb/hio_write_cb =>
+ * hio_close => hio_done => hio_close_cb =>
+ *
+ * hloop_stop => hloop_free => hio_free => HV_FREE(io)
  */
 void hio_init(hio_t* io);
 void hio_ready(hio_t* io);
 void hio_done(hio_t* io);
 void hio_free(hio_t* io);
 uint32_t hio_next_id();
+
+void hio_accept_cb(hio_t* io);
+void hio_connect_cb(hio_t* io);
+void hio_read_cb(hio_t* io, void* buf, int len);
+void hio_write_cb(hio_t* io, const void* buf, int len);
+void hio_close_cb(hio_t* io);
+
+void hio_del_connect_timer(hio_t* io);
+void hio_del_close_timer(hio_t* io);
+void hio_del_keepalive_timer(hio_t* io);
+void hio_del_heartbeat_timer(hio_t* io);
+
+static inline bool hio_is_loop_readbuf(hio_t* io) {
+    return io->readbuf.base == io->loop->readbuf.base;
+}
+static inline bool hio_is_alloced_readbuf(hio_t* io) {
+    return io->alloced_readbuf;
+}
+void hio_alloc_readbuf(hio_t* io, int len);
+void hio_free_readbuf(hio_t* io);
+
+#if WITH_RUDP
+rudp_entry_t* hio_get_rudp(hio_t* io);
+#if WITH_KCP
+kcp_t*  hio_get_kcp(hio_t* io);
+int     hio_write_kcp(hio_t* io, const void* buf, size_t len);
+int     hio_read_kcp (hio_t* io, void* buf, int readbytes);
+#endif
+#endif
 
 #define EVENT_ENTRY(p)          container_of(p, hevent_t, pending_node)
 #define IDLE_ENTRY(p)           container_of(p, hidle_t,  node)

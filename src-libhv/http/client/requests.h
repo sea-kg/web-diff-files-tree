@@ -39,9 +39,6 @@ typedef HttpRequestPtr          Request;
 typedef HttpResponsePtr         Response;
 typedef HttpResponseCallback    ResponseCallback;
 
-static http_headers DefaultHeaders;
-static http_body    NoBody;
-
 HV_INLINE Response request(Request req) {
     Response resp(new HttpResponse);
     int ret = http_client_send(req.get(), resp.get());
@@ -60,6 +57,30 @@ HV_INLINE Response request(http_method method, const char* url, const http_body&
     }
     return request(req);
 }
+
+HV_INLINE Response uploadFile(http_method method, const char* url, const char* filepath, const http_headers& headers = DefaultHeaders) {
+    Request req(new HttpRequest);
+    req->method = method;
+    req->url = url;
+    if (req->File(filepath) != 200) return NULL;
+    if (&headers != &DefaultHeaders) {
+        req->headers = headers;
+    }
+    return request(req);
+}
+
+#ifndef WITHOUT_HTTP_CONTENT
+HV_INLINE Response uploadFormFile(http_method method, const char* url, const char* name, const char* filepath, const http_headers& headers = DefaultHeaders) {
+    Request req(new HttpRequest);
+    req->method = method;
+    req->url = url;
+    req->FormFile(name, filepath);
+    if (&headers != &DefaultHeaders) {
+        req->headers = headers;
+    }
+    return request(req);
+}
+#endif
 
 HV_INLINE Response head(const char* url, const http_headers& headers = DefaultHeaders) {
     return request(HTTP_HEAD, url, NoBody, headers);

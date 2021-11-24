@@ -11,8 +11,13 @@ api.comment_add = function(request_data) {
 
 api.versions_all = function(request_data) {
     request_data = request_data || {}
-    return $.ajax({ url: "./api/versions-all/", type: 'post', cache: false, dataType: 'json',
-        data: JSON.stringify( request_data ),
+    return $.ajax({
+        type: 'post',
+        url: "./api/versions-all/",
+        data: JSON.stringify(request_data),
+        cache: false,
+        contentType: "application/json",
+        dataType: 'json',
         async:true,
     })
 }
