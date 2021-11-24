@@ -86,6 +86,21 @@ function fill_parent_files($conn, $files, $file_id) {
   return $files;
 }
 
+function get_version_info($conn, $version_id) {
+  $ret = array(
+    'id' => $version_id,
+    'name' => '',
+  );
+  $stmt = $conn->prepare('
+    SELECT  * FROM webdiff_versions t0
+    WHERE id = ?
+  ');
+  $stmt->execute(array($version_id));
+  if ($row = $stmt->fetch()) {
+    $ret['name'] = $row['name'];
+  }
+  return $ret;
+}
 
 function get_diff_files($conn, $left_version_id, $right_version_id, $state, $response) {
   $groups = $response['groups'];
@@ -149,6 +164,9 @@ function get_diff_files($conn, $left_version_id, $right_version_id, $state, $res
   return $response;
 }
 
+
+$response['left_version'] = get_version_info($conn, $left_version_id);
+$response['right_version'] = get_version_info($conn, $right_version_id);
 $response = get_diff_files($conn, $left_version_id, $right_version_id, 'missing', $response);
 $response = get_diff_files($conn, $right_version_id, $left_version_id, 'new', $response);
 

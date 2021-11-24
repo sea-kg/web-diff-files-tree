@@ -32,7 +32,7 @@ body {
                 <a class="nav-link" href="browser.html">Browser</a>
               </li>
               <li class="nav-item active">
-                <a class="nav-link" href="index.php">Diff</a>
+                <a class="nav-link" href="index.html">Diff Files</a>
               </li>
               <li class="nav-item active">
                 <a class="nav-link" href="groups.html">Groups</a>
@@ -40,35 +40,6 @@ body {
             </ul>
           </div>
         </nav>
-
-<?php
-  include_once("base_lib.php"); 
-
-  $conn = BaseLib::dbConn();
-  $stmt = $conn->prepare('SELECT * FROM webdiff_versions ORDER BY `name`');
-  $stmt->execute(array());
-  $options_left_version = '';
-  $options_right_version = '';
-  $left_version = -1;
-  $left_version_name = "";
-  $right_version_name = "";
-  $right_version = -1;
-  if (isset($_GET['left_version']) && isset($_GET['right_version'])) {
-    $left_version = $_GET['left_version'];
-    $right_version = $_GET['right_version'];
-  }
-  while ($row = $stmt->fetch()) {
-    $verid = $row['id'];
-    $name = $row['name'];
-    if ($verid == $left_version) {
-      $left_version_name = $name;
-    }
-
-    if ($verid == $right_version) {
-      $right_version_name = $name;
-    }
-  }
-?>
   <br>
   <div class="container">
     <div id="compare_versions" style="display: none">
@@ -81,61 +52,17 @@ body {
       </form>
     </div>
 
-    <?php if ($left_version != -1 && $right_version != -1) { ?>
+    <div id="diff_versions" style="display: none">
       <form>
         <input type="hidden" name="left_version" value="-1"/>
         <input type="hidden" name="right_version" value="-1"/>
         <button class="btn btn-primary" type="submit">Other comparation</button>
       </form>
       <div id="diff_content">
-
       </div>
-
-      <?php
-        echo '<script>
-          var left_version_id = '.$left_version.';
-          var right_version_id = '.$right_version.';
-          var left_version_name = "'.$left_version_name.'";
-          var right_version_name = "'.$right_version_name.'";
-        </script>
-        ';
-      ?>
-
-    <?php
-      // if selected versions
-      } ?>
+    </div>
   </div>
   <script>
-        console.log(pageParams);
-        var left_version_id = pageParams['left_version'];
-        console.log('left_version')
-        left_version_id = left_version_id || -1;
-        var right_version_id = pageParams['right_version'];
-        right_version_id = right_version_id || -1;
-      
-        console.log("left_version_id", left_version_id)
-        console.log("right_version_id", right_version_id)
-
-        if (left_version_id == -1 && right_version_id == -1) {
-          $('#compare_versions').show();
-          api.versions_all().fail(function(error) {
-            console.log(error);
-          }).done(function(result) {
-            var _subhtml = '';
-            $('#select_left_version').html('')
-            for(var i in result['list']) {
-              var item = result['list'][i];
-              $('#select_left_version').append(
-                '<option value="' + item['version_id'] + '">' + item['name'] + ' (#' + item['version_id'] + ')</option>'
-              );
-              $('#select_right_version').append(
-                '<option value="' + item['version_id'] + '">' + item['name'] + ' (#' + item['version_id'] + ')</option>'
-              );
-            }
-          })
-        } else {
-          $('#compare_versions').hide();
-        }
 
         function rebindClick() {
           // expand files
@@ -192,7 +119,7 @@ body {
           })
         }
 
-        function createsubtree(files, startid) {
+        function createsubtree(files, startid, left_version, right_version) {
           var _subhtml = '';
           for (var fid in files) {
             var fileinfo = files[fid];
@@ -211,11 +138,11 @@ body {
               }
               _subhtml += '<img width=25px height=25px src="./images/' + img_name + '">' + fileinfo['filename'];
               if (fileinfo['state'] == 'new') {
-                _subhtml += '<div class="state new">NEW in ' + right_version_name + ', but not found in ' + left_version_name + ' </div>';
+                _subhtml += '<div class="state new">NEW in ' + right_version['name'] + ', but not found in ' + left_version['name'] + ' </div>';
                 _subhtml += '<div class="comment-add" define_file_id="' + define_file_id + '" ></div>'
                 _subhtml += '<div class="file-check" file_id="' + fid + '" ></div>'
               } else if (fileinfo['state'] == 'missing') {
-                _subhtml += '<div class="state missing">MISSING in ' + right_version_name + ', but exists in ' + left_version_name + ' </div>';
+                _subhtml += '<div class="state missing">MISSING in ' + right_version['name'] + ', but exists in ' + left_version['name'] + ' </div>';
                 _subhtml += '<div class="comment-add" define_file_id="' + define_file_id + '" ></div>'
                 _subhtml += '<div class="file-check" file_id="' + fid + '" ></div>'
               }
@@ -232,7 +159,7 @@ body {
               _subhtml += '</div>';
 
               _subhtml += '</div>';
-              _subhtml += '<div class="subtree" id="' + _elid + '">' + createsubtree(files, fid) + '</div>';
+              _subhtml += '<div class="subtree" id="' + _elid + '">' + createsubtree(files, fid, left_version, right_version) + '</div>';
               _subhtml += '</div>';
             }
           }
@@ -260,14 +187,47 @@ body {
                 + '<div class="itemfiles plus opened" toggleid="' + _elid + '"></div>'
                 + '<img width=25px height=25px src="./images/group.svg">' + group['title'] + ' (new files: ' + group['new']  + ', missing files: ' + group['missing'] + ')'
                 + '</div>'
-                + '<div class="subtree" id="' + _elid + '">' + createsubtree(group['files'], 'id0') + '</div>'
+                + '<div class="subtree" id="' + _elid + '">' + createsubtree(group['files'], 'id0', result['left_version'], result['right_version']) + '</div>'
                 + '</div>'
               );
             }
             rebindClick();
           })
         }
-        loadDiff();
+
+        console.log(pageParams);
+        var left_version_id = pageParams['left_version'];
+        console.log('left_version')
+        left_version_id = left_version_id || -1;
+        var right_version_id = pageParams['right_version'];
+        right_version_id = right_version_id || -1;
+      
+        console.log("left_version_id", left_version_id)
+        console.log("right_version_id", right_version_id)
+
+        if (left_version_id == -1 && right_version_id == -1) {
+          $('#compare_versions').show();
+          $('#diff_versions').hide();
+          api.versions_all().fail(function(error) {
+            console.log(error);
+          }).done(function(result) {
+            var _subhtml = '';
+            $('#select_left_version').html('')
+            for(var i in result['list']) {
+              var item = result['list'][i];
+              $('#select_left_version').append(
+                '<option value="' + item['version_id'] + '">' + item['name'] + ' (#' + item['version_id'] + ')</option>'
+              );
+              $('#select_right_version').append(
+                '<option value="' + item['version_id'] + '">' + item['name'] + ' (#' + item['version_id'] + ')</option>'
+              );
+            }
+          })
+        } else {
+          $('#compare_versions').hide();
+          $('#diff_versions').show();
+          loadDiff();
+        }
     </script>
 </body>
 </html>
