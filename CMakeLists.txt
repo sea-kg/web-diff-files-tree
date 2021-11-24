@@ -16,6 +16,9 @@ list (APPEND WSJCPP_SOURCES "src/main.cpp")
 #### BEGIN_WSJCPP_APPEND
 #### END_WSJCPP_APPEND
 
+# database
+list (APPEND WSJCPP_SOURCES "./src/database/mysql_storage.cpp")
+
 # server
 list (APPEND WSJCPP_SOURCES "./src/server/webdiff_http_server.cpp")
 list (APPEND WSJCPP_SOURCES "./src/server/webdiff_ws_server.cpp")
@@ -26,6 +29,27 @@ list (APPEND WSJCPP_SOURCES "./src/server/player_context.cpp")
 add_subdirectory(src-libhv)
 list (APPEND WSJCPP_LIBRARIES hv_static)
 list (APPEND WSJCPP_INCLUDE_DIRS "${PROJECT_BINARY_DIR}/src-libhv/include/hv")
+
+############################
+##### mysql 
+# Find and make sure the system have the header file
+find_path(MYSQL_HEADER mysql/mysql.h)
+if(MYSQL_HEADER STREQUAL "MYSQL_HEADER-NOTFOUND")
+    message(FATAL_ERROR "Could not find the mysql/mysql.h header file: (ubuntu: apt install libmysqlclient-dev) or (debian: apt install default-libmariadbclient-dev and link: ln -s /usr/lib/x86_64-linux-gnu/pkgconfig/mariadb.pc /usr/lib/x86_64-linux-gnu/pkgconfig/mysqlclient.pc)")
+endif()
+
+include(FindPkgConfig)
+pkg_check_modules(LIBMYSQLCLIENT REQUIRED mysqlclient)
+
+foreach(FLAG ${LIBMYSQLCLIENT_CFLAGS_OTHER})
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FLAG}")
+endforeach()
+
+list (APPEND WSJCPP_INCLUDE_DIRS ${LIBMYSQLCLIENT_LIBRARY_DIRS})
+list (APPEND WSJCPP_LIBRARIES ${LIBMYSQLCLIENT_LIBRARIES})
+#####
+############################
+
 
 include_directories(${WSJCPP_INCLUDE_DIRS})
 
