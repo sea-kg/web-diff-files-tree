@@ -14,6 +14,21 @@
 
 using namespace hv;
 
+
+static int httpApiSome(HttpRequest* req, HttpResponse* resp) {
+    if (req->content_type != APPLICATION_JSON) {
+        return 400;
+    }
+    resp->content_type = APPLICATION_JSON;
+    // resp->json = req->json;
+    resp->json["req"] = req->json;
+    resp->json["int"] = 123;
+    resp->json["float"] = 3.14;
+    resp->json["string"] = "hello";
+    resp->json["url"] = req->url;
+    return 200;
+}
+
 WebdiffHttpServer::WebdiffHttpServer() {
     TAG = "WebdiffHttpServer";
     m_httpService = new HttpService();
@@ -27,6 +42,8 @@ WebdiffHttpServer::WebdiffHttpServer() {
     // previous api
     // m_httpService->POST("/api/versions-all/", std::bind(&WebdiffHttpServer::httpApiVersionsAll, this, std::placeholders::_1, std::placeholders::_2));
     m_httpService->POST("/api/versions-all/", std::bind(&WebdiffHttpServer::httpApiVersionsAll, this, std::placeholders::_1, std::placeholders::_2));
+    m_httpService->POST("/api/some/", httpApiSome);
+    
 
     m_httpService->GET("/get", [](HttpRequest* req, HttpResponse* resp) {
         resp->json["origin"] = req->client_addr.ip;
@@ -50,10 +67,11 @@ int WebdiffHttpServer::httpApiVersionsAll(HttpRequest* req, HttpResponse* resp) 
         return response_status(resp, HTTP_STATUS_BAD_REQUEST);
     }
     resp->content_type = APPLICATION_JSON;
-    resp->json = req->json;
-    resp->json["some"] = req->json["some"];
+    // resp->json = req->json;
+    resp->json["req"] = req->json;
     resp->json["int"] = 123;
     resp->json["float"] = 3.14;
     resp->json["string"] = "hello";
+    resp->json["url"] = req->url;
     return 200;
 }
