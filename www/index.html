@@ -96,8 +96,8 @@ body {
                   + '<div class="comment-hide" comment_id="' + result['id'] + '"></div>'
                   + '</div>'
                 )
+                rebindClick();
               })
-              rebindClick();
             }
           })
 
@@ -140,11 +140,11 @@ body {
               if (fileinfo['state'] == 'new') {
                 _subhtml += '<div class="state new">NEW in ' + right_version['name'] + ', but not found in ' + left_version['name'] + ' </div>';
                 _subhtml += '<div class="comment-add" define_file_id="' + define_file_id + '" ></div>'
-                _subhtml += '<div class="file-check" file_id="' + fid + '" ></div>'
+                // _subhtml += '<div class="file-check" file_id="' + fid + '" ></div>'
               } else if (fileinfo['state'] == 'missing') {
                 _subhtml += '<div class="state missing">MISSING in ' + right_version['name'] + ', but exists in ' + left_version['name'] + ' </div>';
                 _subhtml += '<div class="comment-add" define_file_id="' + define_file_id + '" ></div>'
-                _subhtml += '<div class="file-check" file_id="' + fid + '" ></div>'
+                // _subhtml += '<div class="file-check" file_id="' + fid + '" ></div>'
               }
               _subhtml += '<div class="comments" define_file_id="' + define_file_id + '">';
               if (fileinfo['comments'] && fileinfo['comments'].length > 0) {
