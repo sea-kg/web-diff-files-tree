@@ -7,6 +7,8 @@
     <script src="./js/jquery-3.4.1.min.js"></script>
     <script src="./js/popper.min.js"></script>
     <script src="./js/bootstrap.min.js"></script>
+    <script src="./js/index.js"></script>
+    <script src="./js/api.js"></script>
     <link rel="stylesheet" href="./css/bootstrap.min.css">
     <link rel="stylesheet" href="./css/index.css?v=1">
     <style>
@@ -65,26 +67,21 @@ body {
     if ($verid == $right_version) {
       $right_version_name = $name;
     }
-
-    $options_left_version .= "<option ".($left_version==$verid ? "selected" : "")." value='$verid'>".htmlspecialchars($name)." (#$verid)</option>";
-    $options_right_version .= "<option ".($right_version==$verid ? "selected" : "")." value='$verid'>".htmlspecialchars($name)." (#$verid)</option>";
   }
 ?>
   <br>
   <div class="container">
-    <?php if ($left_version == -1 && $right_version == -1) { ?>
+    <div id="compare_versions" style="display: none">
       Compare version:
       <form>
-        <select class="form-select" name="left_version">
-          <?php echo $options_left_version; ?>
-        </select>
+        <select id="select_left_version" class="form-select" name="left_version"></select>
         With this version:
-        <select class="form-select" name="right_version">
-          <?php echo $options_right_version; ?>
-        </select>
+        <select id="select_right_version" class="form-select" name="right_version"></select>
         <button class="btn btn-primary" type="submit">Start compare</button>
       </form>
-    <?php } else { ?>
+    </div>
+
+    <?php if ($left_version != -1 && $right_version != -1) { ?>
       <form>
         <input type="hidden" name="left_version" value="-1"/>
         <input type="hidden" name="right_version" value="-1"/>
@@ -103,7 +100,43 @@ body {
         </script>
         ';
       ?>
-      <script>
+
+    <?php
+      // if selected versions
+      } ?>
+  </div>
+  <script>
+        console.log(pageParams);
+        var left_version_id = pageParams['left_version'];
+        console.log('left_version')
+        left_version_id = left_version_id || -1;
+        var right_version_id = pageParams['right_version'];
+        right_version_id = right_version_id || -1;
+      
+        console.log("left_version_id", left_version_id)
+        console.log("right_version_id", right_version_id)
+
+        if (left_version_id == -1 && right_version_id == -1) {
+          $('#compare_versions').show();
+          api.versions_all().fail(function(error) {
+            console.log(error);
+          }).done(function(result) {
+            var _subhtml = '';
+            $('#select_left_version').html('')
+            for(var i in result['list']) {
+              var item = result['list'][i];
+              $('#select_left_version').append(
+                '<option value="' + item['version_id'] + '">' + item['name'] + ' (#' + item['version_id'] + ')</option>'
+              );
+              $('#select_right_version').append(
+                '<option value="' + item['version_id'] + '">' + item['name'] + ' (#' + item['version_id'] + ')</option>'
+              );
+            }
+          })
+        } else {
+          $('#compare_versions').hide();
+        }
+
         function rebindClick() {
           // expand files
           $('.itemfiles').unbind('click').bind('click', function(el) {
@@ -124,9 +157,9 @@ body {
             var comment = prompt("New comment:");
             
             if (comment) {
-              $.ajax({ url: "./api/comment-add/", type: 'post', cache: false, dataType: 'json',
-                data: JSON.stringify( { "define_file_id": define_file_id, "comment": comment, } ),
-                async:true,
+              api.comment_add({
+                "define_file_id": define_file_id,
+                "comment": comment,
               }).fail(function(error) {
                 console.log(error);
               }).done(function(result) {
@@ -235,14 +268,6 @@ body {
           })
         }
         loadDiff();
-      </script>
-
-
-    <?php
-      // if selected versions
-      } ?>
-  </div>
-  <script>
-  </script>
+    </script>
 </body>
 </html>
