@@ -14,6 +14,13 @@ class WebdiffHttpServer {
         int httpApiV1GetPaths(HttpRequest* req, HttpResponse* resp);
         
         // support previous api
+        int httpApiAdd(HttpRequest* req, HttpResponse* resp);
+        int httpApiCommentAdd(HttpRequest* req, HttpResponse* resp);
+        int httpApiCommentHide(HttpRequest* req, HttpResponse* resp);
+        int httpApiDiff(HttpRequest* req, HttpResponse* resp);
+        int httpApiFiles(HttpRequest* req, HttpResponse* resp);
+        int httpApiGroups(HttpRequest* req, HttpResponse* resp);
+        int httpApiGroupsAll(HttpRequest* req, HttpResponse* resp);
         int httpApiVersionsAll(HttpRequest* req, HttpResponse* resp);
 
     private:
