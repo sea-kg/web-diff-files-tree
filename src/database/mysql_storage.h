@@ -16,6 +16,7 @@ class MySqlStorageConnection {
         virtual std::string lastDatabaseVersion();
         virtual std::vector<std::string> getInstalledVersions();
         virtual bool insertUpdateInfo(const std::string &sVersion, const std::string &sDescription);
+        virtual std::vector<std::string> getApiVersionsAll();
     private:
         std::string TAG;
         MYSQL *m_pConnection;

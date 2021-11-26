@@ -52,9 +52,10 @@ void VvWsConnectionContext::setPlayerContext(PlayerContext *pPlayerContext) {
 // ---------------------------------------------------------------------
 // WebdiffWsServer
 
-WebdiffWsServer::WebdiffWsServer() {
+WebdiffWsServer::WebdiffWsServer(MySqlStorage *pStorage) {
     TAG = "WebdiffWsServer";
-
+    m_pStorage = pStorage;
+    
     // m_wsService = new WebSocketService();
     m_wsService.onopen = [](const WebSocketChannelPtr& channel, const std::string& url) {
         printf("onopen: GET %s\n", url.c_str());

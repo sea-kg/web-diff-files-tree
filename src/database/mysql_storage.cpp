@@ -122,6 +122,29 @@ std::vector<std::string> MySqlStorageConnection::getInstalledVersions() {
 
 // ----------------------------------------------------------------------
 
+std::vector<std::string> MySqlStorageConnection::getApiVersionsAll() {
+    std::lock_guard<std::mutex> lock(m_mtxConn);
+    std::vector<std::string> vVersions;
+
+    std::string sQuery = "SELECT id, `name` FROM webdiff_versions ORDER BY `name`";
+
+    if (mysql_query(m_pConnection, sQuery.c_str())) {
+        std::string sError(mysql_error(m_pConnection));
+        WsjcppLog::throw_err(TAG, "Problem with database " + sError);
+    } else {
+        MYSQL_RES *pRes = mysql_use_result(m_pConnection);
+        MYSQL_ROW row;
+        // output table name
+        while ((row = mysql_fetch_row(pRes)) != NULL) {
+            vVersions.push_back(std::string(row[0]));
+        }
+        mysql_free_result(pRes);
+    }
+    return vVersions;
+}
+
+// ----------------------------------------------------------------------
+
 bool MySqlStorageConnection::insertUpdateInfo(const std::string &sVersion, const std::string &sDescription) {
     std::lock_guard<std::mutex> lock(m_mtxConn);
     std::string sInsertNewVersion = "INSERT INTO updates(version, description, datetime_update) "

@@ -4,12 +4,13 @@
 #include <string>
 #include <json.hpp>
 #include "HttpService.h"
+#include "mysql_storage.h"
 
 using namespace hv;
 
 class WebdiffHttpServer {
     public:
-        WebdiffHttpServer();
+        WebdiffHttpServer(MySqlStorage *pStorage);
         HttpService *getService();
         int httpApiV1GetPaths(HttpRequest* req, HttpResponse* resp);
         
@@ -33,6 +34,7 @@ class WebdiffHttpServer {
 
         std::string TAG;
         HttpService *m_httpService;
+        MySqlStorage *m_pStorage;
 };
 
 #endif // VV_HTTP_SERVER_H

@@ -9,6 +9,7 @@
 #include "EventLoop.h"
 #include "htime.h"
 #include "hssl.h"
+#include "mysql_storage.h"
 
 class VvWsConnectionContext {
     public:
@@ -26,7 +27,7 @@ class VvWsConnectionContext {
 
 class WebdiffWsServer {
     public:
-        WebdiffWsServer();
+        WebdiffWsServer(MySqlStorage *pStorage);
         WebSocketService *getService();
     private:
         void onMessage(const WebSocketChannelPtr& channel, const std::string& msg);
@@ -34,6 +35,7 @@ class WebdiffWsServer {
         std::string TAG;
         WebSocketService m_wsService;
         std::map<std::string, PlayerContext*> m_mapSessions;
+        MySqlStorage *m_pStorage;
 };
 
 

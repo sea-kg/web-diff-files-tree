@@ -11,14 +11,15 @@
 using namespace hv;
 
 
-WebdiffServer::WebdiffServer() {
+WebdiffServer::WebdiffServer(MySqlStorage *pStorage) {
     TAG = "WebdiffServer";
+    m_pStorage = pStorage;
 }
 
 void WebdiffServer::startSync(int nPort) {
-    WebdiffWsServer wsServer;
+    WebdiffWsServer wsServer(m_pStorage);
     WebSocketService *pWs = wsServer.getService();
-    WebdiffHttpServer httpServer;
+    WebdiffHttpServer httpServer(m_pStorage);
     HttpService *pRouter = httpServer.getService();
 
     websocket_server_t server;

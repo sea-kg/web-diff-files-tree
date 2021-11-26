@@ -14,9 +14,10 @@
 
 using namespace hv;
 
-WebdiffHttpServer::WebdiffHttpServer() {
+WebdiffHttpServer::WebdiffHttpServer(MySqlStorage *pStorage) {
     TAG = "WebdiffHttpServer";
     m_httpService = new HttpService();
+    m_pStorage = pStorage;
 
     // static files
     m_httpService->document_root = "./html";
@@ -176,6 +177,11 @@ int WebdiffHttpServer::httpApiVersionsAll(HttpRequest* req, HttpResponse* resp) 
     }
     resp->content_type = APPLICATION_JSON;
     req->ParseBody();
+
+    MySqlStorageConnection *pConn = m_pStorage->connect();
+
+    std::vector<std::string> vVersions = pConn->getApiVersionsAll();
+
 
     // resp->json = req->json;
     resp->json["req_body"] = req->body;

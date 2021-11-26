@@ -17,12 +17,12 @@ int main(int argc, const char* argv[]) {
     WsjcppCore::initRandom();
 
     auto *pStorage = new MySqlStorage();
-    auto *pConnection = pStorage->connect();
+    // auto *pConnection = pStorage->connect();
 
     int nPort = 1234;
     std::cout << "Starting on port: http://localhost:" << nPort << "/" << std::endl;
 
-    WebdiffServer server;
+    WebdiffServer server(pStorage);
     server.startSync(nPort);
 
     return 0;
