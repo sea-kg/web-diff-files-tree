@@ -18,6 +18,7 @@ list (APPEND WSJCPP_SOURCES "src/main.cpp")
 #### END_WSJCPP_APPEND
 
 # database
+list (APPEND WSJCPP_SOURCES "./src/database/model_version.cpp")
 list (APPEND WSJCPP_SOURCES "./src/database/mysql_storage.cpp")
 
 # server

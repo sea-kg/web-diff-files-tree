@@ -5,6 +5,7 @@
 #include <mysql/mysql.h>
 #include <mutex>
 #include <vector>
+#include "model_version.h"
 
 class MySqlStorage;
 
@@ -16,7 +17,7 @@ class MySqlStorageConnection {
         virtual std::string lastDatabaseVersion();
         virtual std::vector<std::string> getInstalledVersions();
         virtual bool insertUpdateInfo(const std::string &sVersion, const std::string &sDescription);
-        virtual std::vector<std::string> getApiVersionsAll();
+        std::vector<ModelVersion> getApiVersionsAll();
     private:
         std::string TAG;
         MYSQL *m_pConnection;

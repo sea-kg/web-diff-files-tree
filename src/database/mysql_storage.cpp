@@ -122,9 +122,9 @@ std::vector<std::string> MySqlStorageConnection::getInstalledVersions() {
 
 // ----------------------------------------------------------------------
 
-std::vector<std::string> MySqlStorageConnection::getApiVersionsAll() {
+std::vector<ModelVersion> MySqlStorageConnection::getApiVersionsAll() {
     std::lock_guard<std::mutex> lock(m_mtxConn);
-    std::vector<std::string> vVersions;
+    std::vector<ModelVersion> vRet;
 
     std::string sQuery = "SELECT id, `name` FROM webdiff_versions ORDER BY `name`";
 
@@ -136,11 +136,17 @@ std::vector<std::string> MySqlStorageConnection::getApiVersionsAll() {
         MYSQL_ROW row;
         // output table name
         while ((row = mysql_fetch_row(pRes)) != NULL) {
-            vVersions.push_back(std::string(row[0]));
+            ModelVersion model;
+            std::stringstream intValue(row[0]);
+            int number = 0;
+            intValue >> number;
+            model.setId(number);
+            model.setName(std::string(row[1]));
+            vRet.push_back(model);
         }
         mysql_free_result(pRes);
     }
-    return vVersions;
+    return vRet;
 }
 
 // ----------------------------------------------------------------------
