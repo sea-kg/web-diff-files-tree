@@ -35,3 +35,10 @@ $ docker-compose up
 
 http://localhost:8071/
 
+env variables:
+
+- WEBDIFF_DB_HOST
+- WEBDIFF_DB_NAME
+- WEBDIFF_DB_USER
+- WEBDIFF_DB_PASS
+- WEBDIFF_DB_PORT

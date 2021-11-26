@@ -1,10 +1,12 @@
 #include "mysql_storage.h"
 #include <mysql/mysql.h>
 #include <wsjcpp_core.h>
+#include <sstream>
 
-MySqlStorageConnection::MySqlStorageConnection(MYSQL *pConn) {
+MySqlStorageConnection::MySqlStorageConnection(MYSQL *pConn, MySqlStorage *pStorage) {
     m_pConnection = pConn;
     TAG = "MySqlStorageConenction";
+    m_pStorage = pStorage;
 }
 
 // ----------------------------------------------------------------------
@@ -121,12 +123,94 @@ std::vector<std::string> MySqlStorageConnection::getInstalledVersions() {
 // ----------------------------------------------------------------------
 
 bool MySqlStorageConnection::insertUpdateInfo(const std::string &sVersion, const std::string &sDescription) {
-    // std::lock_guard<std::mutex> lock(m_mtxConn);
-    // std::string sInsertNewVersion = "INSERT INTO updates(version, description, datetime_update) "
-    //     " VALUES(" + m_pStorage->prepareStringValue(sVersion) + ", " + m_pStorage->prepareStringValue(sDescription) + ",NOW());";
-    // if (mysql_query(m_pConnection, sInsertNewVersion.c_str())) {
-    //     WsjcppLog::err(TAG, "Could not insert row to updates: " + std::string(mysql_error(m_pConnection)));
-    //     return false;
-    // }
+    std::lock_guard<std::mutex> lock(m_mtxConn);
+    std::string sInsertNewVersion = "INSERT INTO updates(version, description, datetime_update) "
+        " VALUES(" + m_pStorage->prepareStringValue(sVersion) + ", " + m_pStorage->prepareStringValue(sDescription) + ",NOW());";
+    if (mysql_query(m_pConnection, sInsertNewVersion.c_str())) {
+        WsjcppLog::err(TAG, "Could not insert row to updates: " + std::string(mysql_error(m_pConnection)));
+        return false;
+    }
     return true;
+}
+
+// ----------------------------------------------------------------------
+// MySqlStorage
+
+MySqlStorage::MySqlStorage() {
+    TAG = "MySqlStorage";
+    
+    if (!WsjcppCore::getEnv("WEBDIFF_DB_HOST", m_sDatabaseHost)) {
+        m_sDatabaseHost = "localhost";
+    }
+
+    if (!WsjcppCore::getEnv("WEBDIFF_DB_NAME", m_sDatabaseName)) {
+        m_sDatabaseName = "webdiff";
+    }
+
+    if (!WsjcppCore::getEnv("WEBDIFF_DB_USER", m_sDatabaseUser)) {
+        m_sDatabaseUser = "webdiffu";
+    }
+
+    if (!WsjcppCore::getEnv("WEBDIFF_DB_PASS", m_sDatabasePass)) {
+        m_sDatabasePass = "jET3E4W9vm";
+    }
+
+    std::string sDatabasePort;
+    if (WsjcppCore::getEnv("WEBDIFF_DB_PORT", sDatabasePort)) {
+        std::stringstream intValue(sDatabasePort);
+        int number = 0;
+        intValue >> number;
+    } else {
+        m_nDatabasePort = 3306;
+    }
+    
+    WsjcppLog::info(TAG, "Database host: " + m_sDatabaseHost);
+    WsjcppLog::info(TAG, "Database port: " + std::to_string(m_nDatabasePort));
+    WsjcppLog::info(TAG, "Database name: " + m_sDatabaseName);
+    WsjcppLog::info(TAG, "Database user: " + m_sDatabaseUser);
+    WsjcppLog::info(TAG, "Database password: (hided)");
+}
+
+MySqlStorageConnection * MySqlStorage::connect() {
+    MySqlStorageConnection *pConn = nullptr;
+    MYSQL *pDatabase = mysql_init(NULL);
+    if (!mysql_real_connect(pDatabase, 
+            m_sDatabaseHost.c_str(),
+            m_sDatabaseUser.c_str(),
+            m_sDatabasePass.c_str(),
+            m_sDatabaseName.c_str(), 
+            m_nDatabasePort, NULL, 0)) {
+        WsjcppLog::err(TAG, "Connect error: " + std::string(mysql_error(pDatabase)));
+        WsjcppLog::err(TAG, "Failed to connect.");
+    } else {
+        pConn = new MySqlStorageConnection(pDatabase, this);
+    }
+    return pConn;
+}
+
+std::string MySqlStorage::prepareStringValue(const std::string &sValue) {
+    // escaping simbols  NUL (ASCII 0), \n, \r, \, ', ", и Control-Z.
+    std::string sResult;
+    sResult.reserve(sValue.size()*2);
+    sResult.push_back('"');
+    for (int i = 0; i < sValue.size(); i++) {
+        char c = sValue[i];
+        if (c == '\n') {
+            sResult.push_back('\\');
+            sResult.push_back('n');
+        } else if (c == '\r') {
+            sResult.push_back('\\');
+            sResult.push_back('r');
+        } else if (c == '\\' || c == '"' || c == '\'') {
+            sResult.push_back('\\');
+            sResult.push_back(c);
+        } else if (c == 0) {
+            sResult.push_back('\\');
+            sResult.push_back('0');
+        } else {
+            sResult.push_back(c);
+        }
+    }
+    sResult.push_back('"');
+    return sResult;
 }

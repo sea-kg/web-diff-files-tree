@@ -4,3 +4,4 @@
 /tmp
 /web-diff-files-tree
 /libhv.*.log
+.logs/
