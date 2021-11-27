@@ -106,15 +106,14 @@ body {
             // var comment = prompt("New comment:");
             
             // if (comment) {
-              $.ajax({ url: "./api/comment-hide/", type: 'post', cache: false, dataType: 'json',
-                data: JSON.stringify( { "comment_id": comment_id } ),
-                async:true,
-              }).fail(function(error) {
-                console.log(error);
-              }).done(function(result) {
-                $('.comment[comment_id=' + comment_id + ']').remove();
-              })
-              rebindClick();
+            api.comment_hide({
+              "comment_id": comment_id
+            }).fail(function(error) {
+              console.log(error);
+            }).done(function(result) {
+              $('.comment[comment_id=' + comment_id + ']').remove();
+            })
+            rebindClick();
             // }
           })
         }
@@ -167,9 +166,9 @@ body {
         }
 
         function loadDiff() {
-          $.ajax({ url: "./api/diff/", type: 'post', cache: false, dataType: 'json',
-            data: JSON.stringify( { "left_version_id": left_version_id, "right_version_id": right_version_id, } ),
-            async:true,
+          api.diff({
+            "left_version_id": left_version_id,
+            "right_version_id": right_version_id,
           }).fail(function(error) {
             console.log(error);
           }).done(function(result) {

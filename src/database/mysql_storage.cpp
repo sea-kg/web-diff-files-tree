@@ -164,6 +164,13 @@ std::string MySqlStorageConnection::prepareStringValue(const std::string &sValue
     return sResult;
 }
 
+int MySqlStorageConnection::paramtoInt(const char *p) {
+    std::stringstream intValue(p);
+    int number = 0;
+    intValue >> number;
+    return number;
+}
+
 std::vector<ModelVersion> MySqlStorageConnection::getApiVersionsAll() {
     std::lock_guard<std::mutex> lock(m_mtxConn);
     std::vector<ModelVersion> vRet;
@@ -179,10 +186,7 @@ std::vector<ModelVersion> MySqlStorageConnection::getApiVersionsAll() {
         // output table name
         while ((row = mysql_fetch_row(pRes)) != NULL) {
             ModelVersion model;
-            std::stringstream intValue(row[0]);
-            int number = 0;
-            intValue >> number;
-            model.setId(number);
+            model.setId(paramtoInt(row[0]));
             model.setName(std::string(row[1]));
             vRet.push_back(model);
         }
@@ -206,10 +210,7 @@ std::vector<ModelGroup> MySqlStorageConnection::getGroupsAll() {
         // output table name
         while ((row = mysql_fetch_row(pRes)) != NULL) {
             ModelGroup model;
-            std::stringstream intValue(row[0]);
-            int number = 0;
-            intValue >> number;
-            model.setId(number);
+            model.setId(paramtoInt(row[0]));
             model.setName(std::string(row[1]));
             vRet.push_back(model);
         }
@@ -217,6 +218,42 @@ std::vector<ModelGroup> MySqlStorageConnection::getGroupsAll() {
     }
     return vRet;
 }
+
+std::vector<ModelGroupForVersion> MySqlStorageConnection::getGroups(int nVersionId) {
+    std::lock_guard<std::mutex> lock(m_mtxConn);
+    std::vector<ModelGroupForVersion> vRet;
+
+    std::string sQuery =
+        " SELECT"
+        "   version_id,"
+        "   file_group_id,"
+        "   `name` as title,"
+        "   COUNT(*) as amount_of_files"
+        " FROM webdiff_files"
+        " INNER JOIN webdiff_file_groups t1 ON t1.id = file_group_id"
+        " WHERE version_id = " + std::to_string(nVersionId) + 
+        " GROUP BY version_id, file_group_id"
+    ;
+    if (mysql_query(m_pConnection, sQuery.c_str())) {
+        std::string sError(mysql_error(m_pConnection));
+        WsjcppLog::throw_err(TAG, "Problem with database " + sError);
+    } else {
+        MYSQL_RES *pRes = mysql_use_result(m_pConnection);
+        MYSQL_ROW row;
+        // output table name
+        while ((row = mysql_fetch_row(pRes)) != NULL) {
+            ModelGroupForVersion model;
+            model.setVersionId(paramtoInt(row[0]));
+            model.setId(paramtoInt(row[1]));
+            model.setTitle(std::string(row[2]));
+            model.setAmountOfFiles(paramtoInt(row[3]));
+            vRet.push_back(model);
+        }
+        mysql_free_result(pRes);
+    }
+    return vRet;
+}
+
 
 // ----------------------------------------------------------------------
 // MySqlStorage
@@ -321,4 +358,9 @@ const std::vector<ModelVersion> &MySqlStorage::getVersionsAll() {
 const std::vector<ModelGroup> &MySqlStorage::getGroupsAll() {
     // from cache
     return m_vGroups;
+}
+
+std::vector<ModelGroupForVersion> MySqlStorage::getGroups(int nVersionId) {
+    MySqlStorageConnection *pConn = getConnection();
+    return pConn->getGroups(nVersionId);
 }

@@ -56,15 +56,14 @@ body {
               return;
             }
             var version_id = subel.attr('version_id');
-            $.ajax({ url: "./api/groups/", type: 'post', cache: false, dataType: 'json',
-              data: JSON.stringify( { "version_id": version_id } ),
-              async:true,
+            api.groups({
+              "version_id": parseInt(version_id)
             }).fail(function(error) {
               console.log(error);
             }).done(function(result) {
               var _subhtml = '';
-              for(var i in result['list']) {
-                var item = result['list'][i];
+              for(var i in result['result']['list']) {
+                var item = result['result']['list'][i];
                 var group_id = item['group_id'];
                 var amount_of_files = item['amount_of_files'];
                 var _elid = 'group' + version_id + '_' + group_id;
@@ -94,9 +93,10 @@ body {
             var version_id = subel.attr('version_id');
             var group_id = subel.attr('group_id');
             var parent_id = subel.attr('parent_id');
-            $.ajax({ url: "./api/files/", type: 'post', cache: false, dataType: 'json',
-              data: JSON.stringify( { "version_id": version_id, "group_id": group_id, "parent_id": parent_id } ),
-              async: true,
+            api.files({
+              "version_id": parseInt(version_id),
+              "group_id": parseInt(group_id),
+              "parent_id": parseInt(parent_id)
             }).fail(function(error) {
               console.log(error);
             }).done(function(result) {

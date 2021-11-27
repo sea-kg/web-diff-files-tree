@@ -7,6 +7,7 @@
 #include <vector>
 #include "model_version.h"
 #include "model_group.h"
+#include "model_group_for_version.h"
 
 class MySqlStorage;
 
@@ -25,10 +26,11 @@ class MySqlStorageConnection {
         long getConnectionDurationInSeconds();
         std::vector<ModelVersion> getApiVersionsAll();
         std::vector<ModelGroup> getGroupsAll();
+        std::vector<ModelGroupForVersion> getGroups(int nVersionId);
 
     private:
         std::string prepareStringValue(const std::string &sValue);
-
+        int paramtoInt(const char *);
         std::string TAG;
         MYSQL *m_pConnection;
         std::mutex m_mtxConn;
@@ -42,6 +44,7 @@ class MySqlStorage {
         bool loadCache();
         const std::vector<ModelVersion> &getVersionsAll();
         const std::vector<ModelGroup> &getGroupsAll();
+        std::vector<ModelGroupForVersion> getGroups(int nVersionId);
 
     private:
         MySqlStorageConnection *connect();

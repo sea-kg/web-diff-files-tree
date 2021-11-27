@@ -144,12 +144,18 @@ int WebdiffHttpServer::httpApiGroups(HttpRequest* req, HttpResponse* resp) {
     resp->content_type = APPLICATION_JSON;
     req->ParseBody();
 
+    // $version_id = $request['version_id'];
+    int nVersionId = req->json["version_id"];
+
+    const std::vector<ModelGroupForVersion> &vGroups = m_pStorage->getGroups(nVersionId);
+    nlohmann::json jsonGroups = nlohmann::json::array();
+    for (int i = 0; i < vGroups.size(); i++) {
+        jsonGroups.push_back(vGroups[i].toJson());
+    }
+
     // resp->json = req->json;
-    resp->json["req_body"] = req->body;
-    resp->json["req_json"] = req->json;
-    resp->json["int"] = 123;
-    resp->json["float"] = 3.14;
-    resp->json["string"] = "hello";
+    resp->json["jsonrpc"] = "2.0";
+    resp->json["result"]["list"] = jsonGroups;
     resp->json["url"] = req->url;
     return 200;
 }
