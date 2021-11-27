@@ -254,6 +254,46 @@ std::vector<ModelGroupForVersion> MySqlStorageConnection::getGroups(int nVersion
     return vRet;
 }
 
+std::vector<ModelFile> MySqlStorageConnection::getFiles(int nVersionId, int nGroupId, int nParentId) {
+    std::lock_guard<std::mutex> lock(m_mtxConn);
+    std::vector<ModelFile> vRet;
+    std::string sQuery =
+        " SELECT"
+        "   t0.version_id,"
+        "   t0.file_group_id,"
+        "   t0.id as file_id,"
+        "   t0.amount_of_children,"
+//        "   t1.filepath,"
+        "   t1.filename as title"
+        " FROM webdiff_files t0"
+        " INNER JOIN webdiff_define_files t1 ON t1.id = define_file_id"
+        " WHERE t0.version_id = " + std::to_string(nVersionId) +
+            " AND file_group_id = " + std::to_string(nGroupId) + 
+            " AND t0.parent_id = " + std::to_string(nParentId) +
+        " ORDER BY t0.amount_of_children <> 0 DESC, title"
+    ;
+    // WsjcppLog::info(TAG, sQuery);
+    if (mysql_query(m_pConnection, sQuery.c_str())) {
+        std::string sError(mysql_error(m_pConnection));
+        WsjcppLog::throw_err(TAG, "Problem with database " + sError);
+    } else {
+        MYSQL_RES *pRes = mysql_use_result(m_pConnection);
+        MYSQL_ROW row;
+        // output table name
+        while ((row = mysql_fetch_row(pRes)) != NULL) {
+            ModelFile model;
+            model.setVersionId(paramtoInt(row[0]));
+            model.setGroupId(paramtoInt(row[1]));
+            model.setId(paramtoInt(row[2]));
+            model.setAmountOfChildren(paramtoInt(row[3]));
+            model.setTitle(std::string(row[4]));
+            vRet.push_back(model);
+        }
+        mysql_free_result(pRes);
+    }
+    return vRet;
+}
+
 
 // ----------------------------------------------------------------------
 // MySqlStorage
@@ -363,4 +403,9 @@ const std::vector<ModelGroup> &MySqlStorage::getGroupsAll() {
 std::vector<ModelGroupForVersion> MySqlStorage::getGroups(int nVersionId) {
     MySqlStorageConnection *pConn = getConnection();
     return pConn->getGroups(nVersionId);
+}
+
+std::vector<ModelFile> MySqlStorage::getFiles(int nVersionId, int nGroupId, int nParentId) {
+    MySqlStorageConnection *pConn = getConnection();
+    return pConn->getFiles(nVersionId, nGroupId, nParentId);
 }

@@ -8,6 +8,7 @@
 #include "model_version.h"
 #include "model_group.h"
 #include "model_group_for_version.h"
+#include "model_file.h"
 
 class MySqlStorage;
 
@@ -27,6 +28,7 @@ class MySqlStorageConnection {
         std::vector<ModelVersion> getApiVersionsAll();
         std::vector<ModelGroup> getGroupsAll();
         std::vector<ModelGroupForVersion> getGroups(int nVersionId);
+        std::vector<ModelFile> getFiles(int nVersionId, int nGroupId, int nParentId);
 
     private:
         std::string prepareStringValue(const std::string &sValue);
@@ -45,6 +47,7 @@ class MySqlStorage {
         const std::vector<ModelVersion> &getVersionsAll();
         const std::vector<ModelGroup> &getGroupsAll();
         std::vector<ModelGroupForVersion> getGroups(int nVersionId);
+        std::vector<ModelFile> getFiles(int nVersionId, int nGroupId, int nParentId);
 
     private:
         MySqlStorageConnection *connect();

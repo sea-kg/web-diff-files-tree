@@ -127,12 +127,18 @@ int WebdiffHttpServer::httpApiFiles(HttpRequest* req, HttpResponse* resp) {
     resp->content_type = APPLICATION_JSON;
     req->ParseBody();
 
+    int nVersionId = req->json["version_id"];
+    int nGroupId = req->json["group_id"];
+    int nParentId = req->json["parent_id"];
+
+    const std::vector<ModelFile> &vFiles = m_pStorage->getFiles(nVersionId, nGroupId, nParentId);
+    nlohmann::json jsonFiles = nlohmann::json::array();
+    for (int i = 0; i < vFiles.size(); i++) {
+        jsonFiles.push_back(vFiles[i].toJson());
+    }
     // resp->json = req->json;
-    resp->json["req_body"] = req->body;
-    resp->json["req_json"] = req->json;
-    resp->json["int"] = 123;
-    resp->json["float"] = 3.14;
-    resp->json["string"] = "hello";
+    resp->json["jsonrpc"] = "2.0";
+    resp->json["result"]["list"] = jsonFiles;
     resp->json["url"] = req->url;
     return 200;
 }
