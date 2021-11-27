@@ -46,15 +46,12 @@ body {
       </div>
       <script>
         $('#groups').html('');
-        $.ajax({ url: "./api/groups-all/", type: 'post', cache: false, dataType: 'json',
-          data: JSON.stringify({}),
-          async: true,
-        }).fail(function(error) {
+        api.groups_all().fail(function(error) {
           console.log(error);
         }).done(function(result) {
           var _subhtml = '';
-          for(var i in result['list']) {
-            var item = result['list'][i];
+          for(var i in result['result']['list']) {
+            var item = result['result']['list'][i];
             $('#groups').append(''
               + '<br><div class="card">'
               + '  <div class="card-body">'

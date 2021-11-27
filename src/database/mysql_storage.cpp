@@ -191,6 +191,33 @@ std::vector<ModelVersion> MySqlStorageConnection::getApiVersionsAll() {
     return vRet;
 }
 
+std::vector<ModelGroup> MySqlStorageConnection::getGroupsAll() {
+    std::lock_guard<std::mutex> lock(m_mtxConn);
+    std::vector<ModelGroup> vRet;
+
+    std::string sQuery = "SELECT id, `name` FROM webdiff_file_groups ORDER BY `name`";
+
+    if (mysql_query(m_pConnection, sQuery.c_str())) {
+        std::string sError(mysql_error(m_pConnection));
+        WsjcppLog::throw_err(TAG, "Problem with database " + sError);
+    } else {
+        MYSQL_RES *pRes = mysql_use_result(m_pConnection);
+        MYSQL_ROW row;
+        // output table name
+        while ((row = mysql_fetch_row(pRes)) != NULL) {
+            ModelGroup model;
+            std::stringstream intValue(row[0]);
+            int number = 0;
+            intValue >> number;
+            model.setId(number);
+            model.setName(std::string(row[1]));
+            vRet.push_back(model);
+        }
+        mysql_free_result(pRes);
+    }
+    return vRet;
+}
+
 // ----------------------------------------------------------------------
 // MySqlStorage
 
@@ -282,9 +309,16 @@ MySqlStorageConnection * MySqlStorage::getConnection() {
 bool MySqlStorage::loadCache() {
     MySqlStorageConnection *pConn = getConnection();
     m_vVersions = pConn->getApiVersionsAll();
+    m_vGroups = pConn->getGroupsAll();
     return true;
 }
 
-const std::vector<ModelVersion> &MySqlStorage::getApiVersionsAll() {
+const std::vector<ModelVersion> &MySqlStorage::getVersionsAll() {
+    // from cache
     return m_vVersions;
+}
+
+const std::vector<ModelGroup> &MySqlStorage::getGroupsAll() {
+    // from cache
+    return m_vGroups;
 }

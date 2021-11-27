@@ -161,13 +161,15 @@ int WebdiffHttpServer::httpApiGroupsAll(HttpRequest* req, HttpResponse* resp) {
     resp->content_type = APPLICATION_JSON;
     req->ParseBody();
 
+    const std::vector<ModelGroup> &vGroups = m_pStorage->getGroupsAll();
+    nlohmann::json jsonGroups = nlohmann::json::array();
+    for (int i = 0; i < vGroups.size(); i++) {
+        jsonGroups.push_back(vGroups[i].toJson());
+    }
+
     // resp->json = req->json;
-    resp->json["req_body"] = req->body;
-    resp->json["req_json"] = req->json;
-    resp->json["int"] = 123;
-    resp->json["float"] = 3.14;
-    resp->json["string"] = "hello";
-    resp->json["url"] = req->url;
+    resp->json["jsonrpc"] = "2.0";
+    resp->json["result"]["list"] = jsonGroups;
     return 200;
 }
 
@@ -178,7 +180,7 @@ int WebdiffHttpServer::httpApiVersionsAll(HttpRequest* req, HttpResponse* resp) 
     resp->content_type = APPLICATION_JSON;
     req->ParseBody();
 
-    const std::vector<ModelVersion> &vVersions = m_pStorage->getApiVersionsAll();
+    const std::vector<ModelVersion> &vVersions = m_pStorage->getVersionsAll();
     nlohmann::json jsonVersions = nlohmann::json::array();
     for (int i = 0; i < vVersions.size(); i++) {
         jsonVersions.push_back(vVersions[i].toJson());
