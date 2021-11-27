@@ -133,14 +133,14 @@ body {
           console.log(error);
         }).done(function(result) {
           var _subhtml = '';
-          for(var i in result['list']) {
-            var item = result['list'][i];
+          for(var i in result['result']['list']) {
+            var item = result['result']['list'][i];
             var elid = 'version_' + item['version_id'];
             $('#versions').append(''
               + '<div class="treeitem">'
               + '  <div class="treeitemname">'
               + '    <div class="itemversions plus" toggleid="' + elid + '"></div>'
-              + '    <img width=25px height=25px src="./images/ver.svg">' + item['name'] + '</div>'
+              + '    <img width=25px height=25px src="./images/ver.png">' + item['name'] + '</div>'
               + '  <div class="subtree" id="' + elid + '" version_id="' + item['version_id'] + '"></div>'
               + '</div>'
             );
