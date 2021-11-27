@@ -15,7 +15,10 @@
    version="1.1"
    id="svg8"
    inkscape:version="0.92.5 (2060ec1f9f, 2020-04-08)"
-   sodipodi:docname="plus.svg">
+   sodipodi:docname="plus.svg"
+   inkscape:export-filename="plus.png"
+   inkscape:export-xdpi="245"
+   inkscape:export-ydpi="245">
   <defs
      id="defs2" />
   <sodipodi:namedview
@@ -26,8 +29,8 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="11.2"
-     inkscape:cx="33.685535"
-     inkscape:cy="11.20434"
+     inkscape:cx="15.158749"
+     inkscape:cy="11.025769"
      inkscape:document-units="mm"
      inkscape:current-layer="layer1"
      showgrid="false"

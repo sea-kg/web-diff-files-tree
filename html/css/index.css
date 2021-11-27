@@ -21,7 +21,7 @@
     cursor: pointer;
     background-size: 15px 15px;
     background-position: center center;
-    background-image: url(../images/plus.svg);
+    background-image: url(../images/plus.png);
     background-repeat: no-repeat;
     height: 25px;
     width: 25px;
@@ -33,7 +33,7 @@
     display: inline-block;
     background-size: 15px 15px;
     background-position: center center;
-    background-image: url(../images/subfile.svg);
+    background-image: url(../images/subfile.png);
     background-repeat: no-repeat;
     height: 25px;
     width: 25px;
@@ -42,7 +42,7 @@
 }
 
 .plus.opened {
-    background-image: url(../images/minus.svg);
+    background-image: url(../images/minus.png);
 }
 
 .state {
@@ -85,7 +85,7 @@
     cursor: pointer;
     background-size: 25px 25px;
     background-position: center center;
-    background-image: url(../images/add_comment.svg);
+    background-image: url(../images/add_comment.png);
     background-repeat: no-repeat;
     height: 25px;
     width: 25px;
@@ -99,7 +99,7 @@
     cursor: pointer;
     background-size: 25px 25px;
     background-position: center center;
-    background-image: url(../images/check.svg);
+    background-image: url(../images/check.png);
     background-repeat: no-repeat;
     height: 25px;
     width: 25px;
@@ -117,7 +117,7 @@
     cursor: pointer;
     background-size: 20px 20px;
     background-position: center center;
-    background-image: url(../images/comment-hide.svg);
+    background-image: url(../images/comment-hide.png);
     background-repeat: no-repeat;
     height: 20px;
     width: 20px;
