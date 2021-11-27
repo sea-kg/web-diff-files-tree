@@ -178,22 +178,14 @@ int WebdiffHttpServer::httpApiVersionsAll(HttpRequest* req, HttpResponse* resp) 
     resp->content_type = APPLICATION_JSON;
     req->ParseBody();
 
-    MySqlStorageConnection *pConn = m_pStorage->connect();
-
-    std::vector<ModelVersion> vVersions = pConn->getApiVersionsAll();
+    const std::vector<ModelVersion> &vVersions = m_pStorage->getApiVersionsAll();
     nlohmann::json jsonVersions = nlohmann::json::array();
     for (int i = 0; i < vVersions.size(); i++) {
         jsonVersions.push_back(vVersions[i].toJson());
     }
 
     // resp->json = req->json;
-    resp->json["req_body"] = req->body;
-    resp->json["req_json"] = req->json;
-    resp->json["list"] = jsonVersions;
-    
-    resp->json["int"] = 123;
-    resp->json["float"] = 3.14;
-    resp->json["string"] = "hello";
-    resp->json["url"] = req->url;
+    resp->json["jsonrpc"] = "2.0";
+    resp->json["result"]["list"] = jsonVersions;
     return 200;
 }

@@ -10,14 +10,15 @@ $response = array(
 
 $conn = BaseLib::dbConn();
 
-$response['list'] = array();
+$response['result'] = array();
+$response['result']['list'] = array();
 
 $stmt = $conn->prepare('SELECT * FROM webdiff_versions ORDER BY `name`');
 $stmt->execute(array());
 while ($row = $stmt->fetch()) {
     $verid = $row['id'];
     $name = $row['name'];
-    $response['list'][] = array(
+    $response['result']['list'][] = array(
       'version_id' => intval($row['id']),
       'name' => $row['name'],
     );

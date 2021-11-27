@@ -15,7 +15,7 @@ void ModelVersion::setName(const std::string &sName) {
     m_sName = sName;
 }
 
-nlohmann::json ModelVersion::toJson() {
+nlohmann::json ModelVersion::toJson() const {
     nlohmann::json jsonRet;
     jsonRet["version_id"] = m_nId;
     jsonRet["name"] = m_sName;

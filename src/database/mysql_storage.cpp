@@ -3,10 +3,9 @@
 #include <wsjcpp_core.h>
 #include <sstream>
 
-MySqlStorageConnection::MySqlStorageConnection(MYSQL *pConn, MySqlStorage *pStorage) {
+MySqlStorageConnection::MySqlStorageConnection(MYSQL *pConn) {
     m_pConnection = pConn;
     TAG = "MySqlStorageConenction";
-    m_pStorage = pStorage;
     m_nCreated = WsjcppCore::getCurrentTimeInMilliseconds();
 }
 
@@ -121,12 +120,10 @@ std::vector<std::string> MySqlStorageConnection::getInstalledVersions() {
     return vVersions;
 }
 
-
-
 bool MySqlStorageConnection::insertUpdateInfo(const std::string &sVersion, const std::string &sDescription) {
     std::lock_guard<std::mutex> lock(m_mtxConn);
     std::string sInsertNewVersion = "INSERT INTO updates(version, description, datetime_update) "
-        " VALUES(" + m_pStorage->prepareStringValue(sVersion) + ", " + m_pStorage->prepareStringValue(sDescription) + ",NOW());";
+        " VALUES(" + this->prepareStringValue(sVersion) + ", " + this->prepareStringValue(sDescription) + ",NOW());";
     if (mysql_query(m_pConnection, sInsertNewVersion.c_str())) {
         WsjcppLog::err(TAG, "Could not insert row to updates: " + std::string(mysql_error(m_pConnection)));
         return false;
@@ -138,6 +135,33 @@ long MySqlStorageConnection::getConnectionDurationInSeconds() {
     long nRet = WsjcppCore::getCurrentTimeInMilliseconds() - m_nCreated;
     nRet = nRet / 1000;
     return nRet;
+}
+
+std::string MySqlStorageConnection::prepareStringValue(const std::string &sValue) {
+    // escaping simbols  NUL (ASCII 0), \n, \r, \, ', ", и Control-Z.
+    std::string sResult;
+    sResult.reserve(sValue.size()*2);
+    sResult.push_back('"');
+    for (int i = 0; i < sValue.size(); i++) {
+        char c = sValue[i];
+        if (c == '\n') {
+            sResult.push_back('\\');
+            sResult.push_back('n');
+        } else if (c == '\r') {
+            sResult.push_back('\\');
+            sResult.push_back('r');
+        } else if (c == '\\' || c == '"' || c == '\'') {
+            sResult.push_back('\\');
+            sResult.push_back(c);
+        } else if (c == 0) {
+            sResult.push_back('\\');
+            sResult.push_back('0');
+        } else {
+            sResult.push_back(c);
+        }
+    }
+    sResult.push_back('"');
+    return sResult;
 }
 
 std::vector<ModelVersion> MySqlStorageConnection::getApiVersionsAll() {
@@ -218,36 +242,9 @@ MySqlStorageConnection * MySqlStorage::connect() {
         WsjcppLog::err(TAG, "Connect error: " + std::string(mysql_error(pDatabase)));
         WsjcppLog::err(TAG, "Failed to connect.");
     } else {
-        pConn = new MySqlStorageConnection(pDatabase, this);
+        pConn = new MySqlStorageConnection(pDatabase);
     }
     return pConn;
-}
-
-std::string MySqlStorage::prepareStringValue(const std::string &sValue) {
-    // escaping simbols  NUL (ASCII 0), \n, \r, \, ', ", и Control-Z.
-    std::string sResult;
-    sResult.reserve(sValue.size()*2);
-    sResult.push_back('"');
-    for (int i = 0; i < sValue.size(); i++) {
-        char c = sValue[i];
-        if (c == '\n') {
-            sResult.push_back('\\');
-            sResult.push_back('n');
-        } else if (c == '\r') {
-            sResult.push_back('\\');
-            sResult.push_back('r');
-        } else if (c == '\\' || c == '"' || c == '\'') {
-            sResult.push_back('\\');
-            sResult.push_back(c);
-        } else if (c == 0) {
-            sResult.push_back('\\');
-            sResult.push_back('0');
-        } else {
-            sResult.push_back(c);
-        }
-    }
-    sResult.push_back('"');
-    return sResult;
 }
 
 MySqlStorageConnection * MySqlStorage::getConnection() {
@@ -283,8 +280,11 @@ MySqlStorageConnection * MySqlStorage::getConnection() {
 }
 
 bool MySqlStorage::loadCache() {
-
-    // getApiVersionsAll()
-
+    MySqlStorageConnection *pConn = getConnection();
+    m_vVersions = pConn->getApiVersionsAll();
     return true;
+}
+
+const std::vector<ModelVersion> &MySqlStorage::getApiVersionsAll() {
+    return m_vVersions;
 }

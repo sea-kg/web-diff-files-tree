@@ -216,8 +216,8 @@ body {
           }).done(function(result) {
             var _subhtml = '';
             $('#select_left_version').html('')
-            for(var i in result['list']) {
-              var item = result['list'][i];
+            for(var i in result['result']['list']) {
+              var item = result['result']['list'][i];
               $('#select_left_version').append(
                 '<option value="' + item['version_id'] + '">' + item['name'] + ' (#' + item['version_id'] + ')</option>'
               );

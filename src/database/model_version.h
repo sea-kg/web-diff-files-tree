@@ -9,7 +9,7 @@ class ModelVersion {
         ModelVersion();
         void setId(int nId);
         void setName(const std::string &sName);
-        nlohmann::json toJson();
+        nlohmann::json toJson() const;
 
     private:
         std::string TAG;
