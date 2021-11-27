@@ -18,6 +18,9 @@ int main(int argc, const char* argv[]) {
 
     auto *pStorage = new MySqlStorage();
     // auto *pConnection = pStorage->connect();
+    if (!pStorage->loadCache()) {
+        WsjcppLog::throw_err(TAG, "Could not load cache");
+    }
 
     int nPort = 1234;
     std::cout << "Starting on port: http://localhost:" << nPort << "/" << std::endl;

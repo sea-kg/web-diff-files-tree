@@ -7,6 +7,7 @@ MySqlStorageConnection::MySqlStorageConnection(MYSQL *pConn, MySqlStorage *pStor
     m_pConnection = pConn;
     TAG = "MySqlStorageConenction";
     m_pStorage = pStorage;
+    m_nCreated = WsjcppCore::getCurrentTimeInMilliseconds();
 }
 
 // ----------------------------------------------------------------------
@@ -120,7 +121,24 @@ std::vector<std::string> MySqlStorageConnection::getInstalledVersions() {
     return vVersions;
 }
 
-// ----------------------------------------------------------------------
+
+
+bool MySqlStorageConnection::insertUpdateInfo(const std::string &sVersion, const std::string &sDescription) {
+    std::lock_guard<std::mutex> lock(m_mtxConn);
+    std::string sInsertNewVersion = "INSERT INTO updates(version, description, datetime_update) "
+        " VALUES(" + m_pStorage->prepareStringValue(sVersion) + ", " + m_pStorage->prepareStringValue(sDescription) + ",NOW());";
+    if (mysql_query(m_pConnection, sInsertNewVersion.c_str())) {
+        WsjcppLog::err(TAG, "Could not insert row to updates: " + std::string(mysql_error(m_pConnection)));
+        return false;
+    }
+    return true;
+}
+
+long MySqlStorageConnection::getConnectionDurationInSeconds() {
+    long nRet = WsjcppCore::getCurrentTimeInMilliseconds() - m_nCreated;
+    nRet = nRet / 1000;
+    return nRet;
+}
 
 std::vector<ModelVersion> MySqlStorageConnection::getApiVersionsAll() {
     std::lock_guard<std::mutex> lock(m_mtxConn);
@@ -150,24 +168,12 @@ std::vector<ModelVersion> MySqlStorageConnection::getApiVersionsAll() {
 }
 
 // ----------------------------------------------------------------------
-
-bool MySqlStorageConnection::insertUpdateInfo(const std::string &sVersion, const std::string &sDescription) {
-    std::lock_guard<std::mutex> lock(m_mtxConn);
-    std::string sInsertNewVersion = "INSERT INTO updates(version, description, datetime_update) "
-        " VALUES(" + m_pStorage->prepareStringValue(sVersion) + ", " + m_pStorage->prepareStringValue(sDescription) + ",NOW());";
-    if (mysql_query(m_pConnection, sInsertNewVersion.c_str())) {
-        WsjcppLog::err(TAG, "Could not insert row to updates: " + std::string(mysql_error(m_pConnection)));
-        return false;
-    }
-    return true;
-}
-
-// ----------------------------------------------------------------------
 // MySqlStorage
 
 MySqlStorage::MySqlStorage() {
     TAG = "MySqlStorage";
-    
+    m_nConnectionOutdatedAfterSeconds = 60*60; // 1 hour
+
     if (!WsjcppCore::getEnv("WEBDIFF_DB_HOST", m_sDatabaseHost)) {
         m_sDatabaseHost = "localhost";
     }
@@ -242,4 +248,43 @@ std::string MySqlStorage::prepareStringValue(const std::string &sValue) {
     }
     sResult.push_back('"');
     return sResult;
+}
+
+MySqlStorageConnection * MySqlStorage::getConnection() {
+    std::lock_guard<std::mutex> lock(m_mtxStorageConnections);
+    
+    if (m_vDoRemoveStorageConnections.size() > 0) {
+        WsjcppLog::warn(TAG, "TODO cleanup m_vDoRemoveStorageConnections, size = " + std::to_string(m_vDoRemoveStorageConnections.size()));
+    }
+
+    std::string sThreadId = WsjcppCore::getThreadId();
+    MySqlStorageConnection *pStorageConnection = nullptr;
+    std::map<std::string, MySqlStorageConnection *>::iterator it;
+    it = m_mapStorageConnections.find(sThreadId);
+    if (it == m_mapStorageConnections.end()) {
+        pStorageConnection = this->connect();
+        if (pStorageConnection == nullptr) {
+            return nullptr;
+        }
+        m_mapStorageConnections[sThreadId] = pStorageConnection;
+    } else {
+        pStorageConnection = it->second;
+        // if connection outdated just reconnect this also maybe need keep several time last connection
+        if (pStorageConnection->getConnectionDurationInSeconds() > m_nConnectionOutdatedAfterSeconds) {
+            m_vDoRemoveStorageConnections.push_back(pStorageConnection);
+            pStorageConnection = this->connect();
+            if (pStorageConnection == nullptr) {
+                return nullptr;
+            }
+            m_mapStorageConnections[sThreadId] = pStorageConnection;
+        }
+    }
+    return pStorageConnection;
+}
+
+bool MySqlStorage::loadCache() {
+
+    // getApiVersionsAll()
+
+    return true;
 }
