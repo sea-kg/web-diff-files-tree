@@ -294,6 +294,104 @@ std::vector<ModelFile> MySqlStorageConnection::getFiles(int nVersionId, int nGro
     return vRet;
 }
 
+std::vector<ModelFileDiff> MySqlStorageConnection::getDiffFiles(int nLeftVersionId, int nRightVersionId, const std::string &sState) {
+    std::lock_guard<std::mutex> lock(m_mtxConn);
+    std::vector<ModelFileDiff> vRet;
+    std::string sQuery =
+        "SELECT "
+        "    t0.id, "
+        "    t0.parent_id, "
+        "    t0.file_group_id, "
+        "    t0.amount_of_children, "
+        "    t2.name as group_name, "
+        "    t0.define_file_id, "
+        "    t1.filepath, "
+        "    t1.filename "
+        "FROM webdiff_files t0 "
+        "INNER JOIN webdiff_define_files t1 ON t1.id = t0.define_file_id "
+        "INNER JOIN webdiff_file_groups t2 ON t2.id = t0.file_group_id "
+        "WHERE "
+        "  version_id = " + std::to_string(nLeftVersionId) + 
+        "  AND define_file_id NOT IN (SELECT define_file_id FROM webdiff_files t10 WHERE version_id = " + std::to_string(nRightVersionId) + " AND t0.file_group_id = t10.file_group_id); "
+    ;
+    // WsjcppLog::info(TAG, sQuery);
+    if (mysql_query(m_pConnection, sQuery.c_str())) {
+        std::string sError(mysql_error(m_pConnection));
+        WsjcppLog::throw_err(TAG, "Problem with database " + sError);
+    } else {
+        MYSQL_RES *pRes = mysql_use_result(m_pConnection);
+        MYSQL_ROW row;
+        // output table name
+        while ((row = mysql_fetch_row(pRes)) != NULL) {
+            ModelFileDiff model;
+            model.setId(paramtoInt(row[0]));
+            model.setParentFileId(paramtoInt(row[1]));
+            model.setGroupId(paramtoInt(row[2]));
+            model.setAmountOfChildren(paramtoInt(row[3]));
+            model.setGroupName(std::string(row[4]));
+            model.setDefineFileId(paramtoInt(row[5]));
+            model.setFilepath(std::string(row[6]));
+            model.setFilename(std::string(row[7]));
+            model.setState(sState);
+            // TODO set comments list
+            vRet.push_back(model);
+        }
+        mysql_free_result(pRes);
+    }
+    return vRet;
+}
+
+/*
+function get_diff_files($conn, $left_version_id, $right_version_id, $state, $response) {
+  $groups = $response['groups'];
+  $stmt = $conn->prepare('
+  
+  ');
+  $stmt->execute(array($left_version_id, $right_version_id));
+  while ($row = $stmt->fetch()) {
+    $file_id = $row['id'];
+    $file_parent_id = $row['parent_id'];
+    $file_group_id = $row['file_group_id'];
+    $group_name = $row['group_name'];
+    $define_file_id = $row['define_file_id'];
+    $filepath = $row['filepath'];
+    $filename = $row['filename'];
+    $amount_of_children = $row['amount_of_children'];
+    $group_id = 'group'.$file_group_id;
+    if (!isset($groups[$group_id])) {
+      $groups[$group_id] = array(
+        'new' => 0,
+        'missing' => 0,
+        'title' => $group_name,
+        'files' => array(),
+      );
+    }
+    $groups[$group_id][$state] = $groups[$group_id][$state] + 1;
+    $groups[$group_id]['files']['id'.$file_id] = array(
+      'id' => 'id'.$file_id,
+      'filename' => $filename,
+      'parent' => 'id'.$file_parent_id,
+      'group_name' => $group_name,
+      'define_file_id' => intval($define_file_id),
+      'filepath' => $filepath,
+      'amount_of_children' => $amount_of_children,
+      'state' => $state,
+      'comments' => load_comments($conn, intval($define_file_id)),
+    );
+    $files = array();
+    $files = fill_parent_files($conn, $files, $file_parent_id);
+    // $groups[$group_id]['some'] = $files;
+    foreach ($files as $val) {
+      $fid = $val['id'];
+      if (!isset($groups[$group_id]['files'][$fid])) {
+        $groups[$group_id]['files'][$fid] = $val;
+      }
+    }
+  }
+  $response['groups'] = $groups;
+  return $response;
+}
+*/
 
 // ----------------------------------------------------------------------
 // MySqlStorage
@@ -395,6 +493,16 @@ const std::vector<ModelVersion> &MySqlStorage::getVersionsAll() {
     return m_vVersions;
 }
 
+ModelVersion MySqlStorage::getVersionInfo(int nVersionId) {
+    ModelVersion ret;
+    for (int i = 0; i < m_vVersions.size(); i++) {
+        if (m_vVersions[i].getId() == nVersionId) {
+            ret = m_vVersions[i];
+        }
+    }
+    return ret;
+}
+
 const std::vector<ModelGroup> &MySqlStorage::getGroupsAll() {
     // from cache
     return m_vGroups;
@@ -408,4 +516,11 @@ std::vector<ModelGroupForVersion> MySqlStorage::getGroups(int nVersionId) {
 std::vector<ModelFile> MySqlStorage::getFiles(int nVersionId, int nGroupId, int nParentId) {
     MySqlStorageConnection *pConn = getConnection();
     return pConn->getFiles(nVersionId, nGroupId, nParentId);
+}
+
+std::vector<ModelFileDiff> MySqlStorage::getDiff(int nLeftVersionId, int nRightVersionId) {
+    MySqlStorageConnection *pConn = getConnection();
+    std::vector<ModelFileDiff> vMissing = pConn->getDiffFiles(nLeftVersionId, nRightVersionId, "missing");
+    std::vector<ModelFileDiff> vNew = pConn->getDiffFiles(nRightVersionId, nLeftVersionId, "new");
+
 }

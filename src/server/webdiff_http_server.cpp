@@ -110,12 +110,19 @@ int WebdiffHttpServer::httpApiDiff(HttpRequest* req, HttpResponse* resp) {
     resp->content_type = APPLICATION_JSON;
     req->ParseBody();
 
+    int nLeftVersionId = req->json["left_version_id"];
+    int nRightVersionId = req->json["right_version_id"];
+    std::vector<ModelFileDiff> vFiles = m_pStorage->getDiff(nLeftVersionId, nRightVersionId);
+    nlohmann::json jsonFiles = nlohmann::json::array();
+    for (int i = 0; i < vFiles.size(); i++) {
+        jsonFiles.push_back(vFiles[i].toJson());
+    }
     // resp->json = req->json;
-    resp->json["req_body"] = req->body;
-    resp->json["req_json"] = req->json;
-    resp->json["int"] = 123;
-    resp->json["float"] = 3.14;
-    resp->json["string"] = "hello";
+    resp->json["jsonrpc"] = "2.0";
+    resp->json["result"]["left_version"] = m_pStorage->getVersionInfo(nLeftVersionId).toJson();
+    resp->json["result"]["right_version"] = m_pStorage->getVersionInfo(nRightVersionId).toJson();
+    // TODO set by groups
+    resp->json["result"]["list"] = jsonFiles;
     resp->json["url"] = req->url;
     return 200;
 }
@@ -131,7 +138,7 @@ int WebdiffHttpServer::httpApiFiles(HttpRequest* req, HttpResponse* resp) {
     int nGroupId = req->json["group_id"];
     int nParentId = req->json["parent_id"];
 
-    const std::vector<ModelFile> &vFiles = m_pStorage->getFiles(nVersionId, nGroupId, nParentId);
+    std::vector<ModelFile> vFiles = m_pStorage->getFiles(nVersionId, nGroupId, nParentId);
     nlohmann::json jsonFiles = nlohmann::json::array();
     for (int i = 0; i < vFiles.size(); i++) {
         jsonFiles.push_back(vFiles[i].toJson());

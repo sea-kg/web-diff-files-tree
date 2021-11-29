@@ -11,6 +11,10 @@ void ModelVersion::setId(int nId) {
     m_nId = nId;
 }
 
+int ModelVersion::getId() {
+    return m_nId;
+}
+
 void ModelVersion::setName(const std::string &sName) {
     m_sName = sName;
 }

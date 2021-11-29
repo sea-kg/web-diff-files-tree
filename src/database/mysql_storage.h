@@ -9,6 +9,7 @@
 #include "model_group.h"
 #include "model_group_for_version.h"
 #include "model_file.h"
+#include "model_file_diff.h"
 
 class MySqlStorage;
 
@@ -29,6 +30,7 @@ class MySqlStorageConnection {
         std::vector<ModelGroup> getGroupsAll();
         std::vector<ModelGroupForVersion> getGroups(int nVersionId);
         std::vector<ModelFile> getFiles(int nVersionId, int nGroupId, int nParentId);
+        std::vector<ModelFileDiff> getDiffFiles(int nLeftVersionId, int nRightVersionId, const std::string &sState);
 
     private:
         std::string prepareStringValue(const std::string &sValue);
@@ -45,9 +47,11 @@ class MySqlStorage {
         MySqlStorageConnection * getConnection();
         bool loadCache();
         const std::vector<ModelVersion> &getVersionsAll();
+        ModelVersion getVersionInfo(int nVersionId);
         const std::vector<ModelGroup> &getGroupsAll();
         std::vector<ModelGroupForVersion> getGroups(int nVersionId);
         std::vector<ModelFile> getFiles(int nVersionId, int nGroupId, int nParentId);
+        std::vector<ModelFileDiff> getDiff(int nLeftVersionId, int nRightVersionId);
 
     private:
         MySqlStorageConnection *connect();

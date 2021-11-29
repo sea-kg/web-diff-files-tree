@@ -8,6 +8,7 @@ class ModelVersion {
     public:
         ModelVersion();
         void setId(int nId);
+        int getId();
         void setName(const std::string &sName);
         nlohmann::json toJson() const;
 

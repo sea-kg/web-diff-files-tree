@@ -8,7 +8,7 @@ import re
 import requests
 
 # BASEURL = "http://localhost:8071/"
-BASEURL = "http://localhost/webdiff/"
+BASEURL = "http://localhost:1234"
 
 def get_group_and_version(_zip_filename):
     _zip_filename = _zip_filename[:-4] # remove '.zip'
@@ -50,14 +50,15 @@ for _zip_filename in files:
             print("Uploading " + str(len(data_request['files'])) + "....")
             r = requests.post(BASEURL + '/api/add/', json = data_request)
             if r.status_code != 200:
-                sys.exit("Could not post")
+                sys.exit("Could not post " + str(r.status_code ) + r.content)
             _uploaded += len(data_request['files'])
             print("Uploaded " + str(_uploaded) + "/" + str(_all))
             data_request['files'] = []
     if len(data_request['files']) > 0:
         r = requests.post(BASEURL + '/api/add/', json = data_request)
         if r.status_code != 200:
-            sys.exit("Could not post")
+            sys.exit("Could not post " + str(r.status_code ) + str(r.content))
+        str(r.content)
         _uploaded += len(data_request['files'])
         print("Uploaded " + str(_uploaded) + "/" + str(_all))
         data_request['files'] = []

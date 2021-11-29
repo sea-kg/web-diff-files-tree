@@ -197,9 +197,9 @@ body {
         console.log(pageParams);
         var left_version_id = pageParams['left_version'];
         console.log('left_version')
-        left_version_id = left_version_id || -1;
+        left_version_id = parseInt(left_version_id) || -1;
         var right_version_id = pageParams['right_version'];
-        right_version_id = right_version_id || -1;
+        right_version_id = parseInt(right_version_id) || -1;
       
         console.log("left_version_id", left_version_id)
         console.log("right_version_id", right_version_id)
