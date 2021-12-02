@@ -125,7 +125,7 @@ body {
             if (fileinfo['parent'] == startid) {
               var amount_of_children = fileinfo['amount_of_children'];
               var define_file_id = fileinfo['define_file_id'];
-              var img_name = amount_of_children > 0 ? 'directory.svg' : 'file.svg';
+              var img_name = amount_of_children > 0 ? 'directory.png' : 'file.png';
               
               var _elid = 'file_' + fid;
               _subhtml += '<div class="treeitem">';
@@ -172,6 +172,7 @@ body {
           }).fail(function(error) {
             console.log(error);
           }).done(function(result) {
+            result = result['result']
             document.diff_result = result;
             console.log(result);
             var groups = result['groups'];

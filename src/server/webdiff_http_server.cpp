@@ -112,17 +112,14 @@ int WebdiffHttpServer::httpApiDiff(HttpRequest* req, HttpResponse* resp) {
 
     int nLeftVersionId = req->json["left_version_id"];
     int nRightVersionId = req->json["right_version_id"];
-    std::vector<ModelFileDiff> vFiles = m_pStorage->getDiff(nLeftVersionId, nRightVersionId);
-    nlohmann::json jsonFiles = nlohmann::json::array();
-    for (int i = 0; i < vFiles.size(); i++) {
-        jsonFiles.push_back(vFiles[i].toJson());
-    }
+    ModelDiffGroups groups;
+
+    m_pStorage->getDiff(nLeftVersionId, nRightVersionId, groups);
     // resp->json = req->json;
     resp->json["jsonrpc"] = "2.0";
     resp->json["result"]["left_version"] = m_pStorage->getVersionInfo(nLeftVersionId).toJson();
     resp->json["result"]["right_version"] = m_pStorage->getVersionInfo(nRightVersionId).toJson();
-    // TODO set by groups
-    resp->json["result"]["list"] = jsonFiles;
+    resp->json["result"]["groups"] = groups.toJson();
     resp->json["url"] = req->url;
     return 200;
 }

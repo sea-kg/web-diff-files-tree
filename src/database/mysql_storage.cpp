@@ -211,7 +211,7 @@ std::vector<ModelGroup> MySqlStorageConnection::getGroupsAll() {
         while ((row = mysql_fetch_row(pRes)) != NULL) {
             ModelGroup model;
             model.setId(paramtoInt(row[0]));
-            model.setName(std::string(row[1]));
+            model.setTitle(std::string(row[1]));
             vRet.push_back(model);
         }
         mysql_free_result(pRes);
@@ -294,9 +294,49 @@ std::vector<ModelFile> MySqlStorageConnection::getFiles(int nVersionId, int nGro
     return vRet;
 }
 
-std::vector<ModelFileDiff> MySqlStorageConnection::getDiffFiles(int nLeftVersionId, int nRightVersionId, const std::string &sState) {
+void MySqlStorageConnection::findAndAddFile(const ModelGroup &group, int nFileId, ModelDiffGroups &diffGroups, std::vector<int> &vParentFileIds) {
+    // std::lock_guard<std::mutex> lock(m_mtxConn);
+    std::string sQuery =
+        " SELECT"
+        "   t0.id,"
+        "   t0.parent_id,"
+        // "   t0.file_group_id,"
+        "   t0.amount_of_children,"
+        "   t0.define_file_id,"
+        "   t1.filepath,"
+        "   t1.filename"
+        " FROM webdiff_files t0"
+        " INNER JOIN webdiff_define_files t1 ON t1.id = t0.define_file_id"
+        " WHERE t0.id = " + std::to_string(nFileId) + ";"
+    ;
+    // WsjcppLog::info(TAG, sQuery);
+    if (mysql_query(m_pConnection, sQuery.c_str())) {
+        std::string sError(mysql_error(m_pConnection));
+        WsjcppLog::throw_err(TAG, "Problem with database " + sError);
+    } else {
+        MYSQL_RES *pRes = mysql_use_result(m_pConnection);
+        MYSQL_ROW row;
+        // output table name
+        while ((row = mysql_fetch_row(pRes)) != NULL) {
+            // std::cout << "file" << std::endl;
+            ModelDiffFile model;
+            int nFileId = paramtoInt(row[0]);
+            vParentFileIds.push_back(nFileId);
+            model.setId(nFileId);
+            model.setParentFileId(paramtoInt(row[1]));
+            model.setAmountOfChildren(paramtoInt(row[2]));
+            model.setDefineFileId(paramtoInt(row[3]));
+            model.setFilepath(std::string(row[4]));
+            model.setFilename(std::string(row[5]));
+            model.setState("");
+            diffGroups.addDiffFile(group, model);
+        }
+        mysql_free_result(pRes);
+    }
+}
+
+void MySqlStorageConnection::getDiffFiles(int nLeftVersionId, int nRightVersionId, const std::string &sState, ModelDiffGroups &diffGroups) {
     std::lock_guard<std::mutex> lock(m_mtxConn);
-    std::vector<ModelFileDiff> vRet;
     std::string sQuery =
         "SELECT "
         "    t0.id, "
@@ -323,22 +363,23 @@ std::vector<ModelFileDiff> MySqlStorageConnection::getDiffFiles(int nLeftVersion
         MYSQL_ROW row;
         // output table name
         while ((row = mysql_fetch_row(pRes)) != NULL) {
-            ModelFileDiff model;
+            // std::cout << "file" << std::endl;
+            ModelDiffFile model;
+            ModelGroup group;
             model.setId(paramtoInt(row[0]));
             model.setParentFileId(paramtoInt(row[1]));
-            model.setGroupId(paramtoInt(row[2]));
+            group.setId(paramtoInt(row[2]));
             model.setAmountOfChildren(paramtoInt(row[3]));
-            model.setGroupName(std::string(row[4]));
+            group.setTitle(std::string(row[4]));
             model.setDefineFileId(paramtoInt(row[5]));
             model.setFilepath(std::string(row[6]));
             model.setFilename(std::string(row[7]));
             model.setState(sState);
             // TODO set comments list
-            vRet.push_back(model);
+            diffGroups.addDiffFile(group, model);
         }
         mysql_free_result(pRes);
     }
-    return vRet;
 }
 
 /*
@@ -518,9 +559,32 @@ std::vector<ModelFile> MySqlStorage::getFiles(int nVersionId, int nGroupId, int 
     return pConn->getFiles(nVersionId, nGroupId, nParentId);
 }
 
-std::vector<ModelFileDiff> MySqlStorage::getDiff(int nLeftVersionId, int nRightVersionId) {
+void MySqlStorage::getDiff(int nLeftVersionId, int nRightVersionId, ModelDiffGroups &diffGroups) {
     MySqlStorageConnection *pConn = getConnection();
-    std::vector<ModelFileDiff> vMissing = pConn->getDiffFiles(nLeftVersionId, nRightVersionId, "missing");
-    std::vector<ModelFileDiff> vNew = pConn->getDiffFiles(nRightVersionId, nLeftVersionId, "new");
 
+    pConn->getDiffFiles(nLeftVersionId, nRightVersionId, "missing", diffGroups);
+    pConn->getDiffFiles(nRightVersionId, nLeftVersionId, "new", diffGroups);
+
+    const std::map<int, ModelDiffGroup> &groups = diffGroups.getGroups();
+
+    for (auto it = groups.begin(); it != groups.end(); ++it) {
+        const ModelGroup &group = it->second.getGroup();
+        std::vector<int> vIds = it->second.getParentFilesIds();
+        while (vIds.size() > 0) {
+            int nFileId = vIds.back();
+            vIds.pop_back();
+            if (nFileId == 0 || it->second.hasFileId(nFileId)) {
+                continue;
+            }
+            pConn->findAndAddFile(group, nFileId, diffGroups, vIds);
+        }
+    }
+    // diffGroups
+
+    // for (int i = 0; i < vMissing.size(); i++) {
+    //     vRet.push_back(vMissing[i]);
+    // }
+    // for (int i = 0; i < vNew.size(); i++) {
+    //     vRet.push_back(vNew[i]);
+    // }
 }

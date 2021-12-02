@@ -5,11 +5,11 @@
 #include <mysql/mysql.h>
 #include <mutex>
 #include <vector>
+#include "model_diff_groups.h"
 #include "model_version.h"
 #include "model_group.h"
 #include "model_group_for_version.h"
 #include "model_file.h"
-#include "model_file_diff.h"
 
 class MySqlStorage;
 
@@ -30,7 +30,8 @@ class MySqlStorageConnection {
         std::vector<ModelGroup> getGroupsAll();
         std::vector<ModelGroupForVersion> getGroups(int nVersionId);
         std::vector<ModelFile> getFiles(int nVersionId, int nGroupId, int nParentId);
-        std::vector<ModelFileDiff> getDiffFiles(int nLeftVersionId, int nRightVersionId, const std::string &sState);
+        void findAndAddFile(const ModelGroup &group, int nFileId, ModelDiffGroups &diffGroups, std::vector<int> &vParentFileIds);
+        void getDiffFiles(int nLeftVersionId, int nRightVersionId, const std::string &sState, ModelDiffGroups &diffGroups);
 
     private:
         std::string prepareStringValue(const std::string &sValue);
@@ -51,7 +52,7 @@ class MySqlStorage {
         const std::vector<ModelGroup> &getGroupsAll();
         std::vector<ModelGroupForVersion> getGroups(int nVersionId);
         std::vector<ModelFile> getFiles(int nVersionId, int nGroupId, int nParentId);
-        std::vector<ModelFileDiff> getDiff(int nLeftVersionId, int nRightVersionId);
+        void getDiff(int nLeftVersionId, int nRightVersionId, ModelDiffGroups &groups);
 
     private:
         MySqlStorageConnection *connect();

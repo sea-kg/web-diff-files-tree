@@ -8,13 +8,15 @@ class ModelGroup {
     public:
         ModelGroup();
         void setId(int nId);
-        void setName(const std::string &sName);
+        int getId() const;
+        void setTitle(const std::string &sTitle);
+        const std::string &getTitle() const;
         nlohmann::json toJson() const;
 
     private:
         std::string TAG;
         int m_nId;
-        std::string m_sName;
+        std::string m_sTitle;
 };
 
 #endif // MODEL_GROUP_H

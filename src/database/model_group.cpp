@@ -3,20 +3,28 @@
 
 ModelGroup::ModelGroup() {
     m_nId = -1;
-    m_sName = "None";
+    m_sTitle = "None";
 }
 
 void ModelGroup::setId(int nId) {
     m_nId = nId;
 }
 
-void ModelGroup::setName(const std::string &sName) {
-    m_sName = sName;
+int ModelGroup::getId() const {
+    return m_nId;
+}
+
+void ModelGroup::setTitle(const std::string &sTitle) {
+    m_sTitle = sTitle;
+}
+
+const std::string &ModelGroup::getTitle() const {
+    return m_sTitle;
 }
 
 nlohmann::json ModelGroup::toJson() const {
     nlohmann::json jsonRet;
     jsonRet["group_id"] = m_nId;
-    jsonRet["name"] = m_sName;
+    jsonRet["name"] = m_sTitle;
     return jsonRet;
 }

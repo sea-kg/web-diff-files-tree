@@ -18,8 +18,8 @@ list (APPEND WSJCPP_SOURCES "src/main.cpp")
 #### END_WSJCPP_APPEND
 
 # database
+list (APPEND WSJCPP_SOURCES "./src/database/model_diff_groups.cpp")
 list (APPEND WSJCPP_SOURCES "./src/database/model_file.cpp")
-list (APPEND WSJCPP_SOURCES "./src/database/model_file_diff.cpp")
 list (APPEND WSJCPP_SOURCES "./src/database/model_group.cpp")
 list (APPEND WSJCPP_SOURCES "./src/database/model_group_for_version.cpp")
 list (APPEND WSJCPP_SOURCES "./src/database/model_version.cpp")
