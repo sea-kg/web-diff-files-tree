@@ -117,9 +117,9 @@ int WebdiffHttpServer::httpApiDiff(HttpRequest* req, HttpResponse* resp) {
     m_pStorage->getDiff(nLeftVersionId, nRightVersionId, groups);
     // resp->json = req->json;
     resp->json["jsonrpc"] = "2.0";
+    resp->json["result"] = groups.toJson();
     resp->json["result"]["left_version"] = m_pStorage->getVersionInfo(nLeftVersionId).toJson();
     resp->json["result"]["right_version"] = m_pStorage->getVersionInfo(nRightVersionId).toJson();
-    resp->json["result"]["groups"] = groups.toJson();
     resp->json["url"] = req->url;
     return 200;
 }

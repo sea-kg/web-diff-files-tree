@@ -5,11 +5,8 @@
 #include <mysql/mysql.h>
 #include <mutex>
 #include <vector>
-#include "model_diff_groups.h"
-#include "model_version.h"
-#include "model_group.h"
-#include "model_group_for_version.h"
-#include "model_file.h"
+#include "models_basic.h"
+#include "models_diff.h"
 
 class MySqlStorage;
 
@@ -22,16 +19,17 @@ class MySqlStorageConnection {
         std::string lastDatabaseVersion();
         std::vector<std::string> getInstalledVersions();
         bool insertUpdateInfo(const std::string &sVersion, const std::string &sDescription);
-        
 
     protected:
         long getConnectionDurationInSeconds();
         std::vector<ModelVersion> getApiVersionsAll();
         std::vector<ModelGroup> getGroupsAll();
         std::vector<ModelGroupForVersion> getGroups(int nVersionId);
+        std::vector<ModelComment> getComments(int nDefineFileId);
         std::vector<ModelFile> getFiles(int nVersionId, int nGroupId, int nParentId);
         void findAndAddFile(const ModelGroup &group, int nFileId, ModelDiffGroups &diffGroups, std::vector<int> &vParentFileIds);
         void getDiffFiles(int nLeftVersionId, int nRightVersionId, const std::string &sState, ModelDiffGroups &diffGroups);
+        
 
     private:
         std::string prepareStringValue(const std::string &sValue);

@@ -1,10 +1,10 @@
-#ifndef MODEL_DIFF_GROUPS_H
-#define MODEL_DIFF_GROUPS_H
+#ifndef MODELS_DIFF_H
+#define MODELS_DIFF_H
 
 #include <string>
 #include <json.hpp>
 #include <algorithm>
-#include "model_group.h"
+#include "models_basic.h"
 
 class ModelDiffFile {
     public:
@@ -15,6 +15,7 @@ class ModelDiffFile {
         int getParentFileId() const;
         void setVersionId(int nVersionId);
         void setDefineFileId(int nDefineFileId);
+        int getDefineFileId() const;
         void setAmountOfChildren(int nAmountOfChildren);
         void setFilename(const std::string &sFilename);
         void setFilepath(const std::string &sFilepath);
@@ -40,7 +41,6 @@ class ModelDiffGroup {
         ModelDiffGroup(const ModelGroup &group);
         void addDiffFile(const ModelDiffFile &fileDiff);
         const ModelGroup &getGroup() const;
-        const std::vector<int> &getFilesIds() const;
         const std::vector<int> &getParentFilesIds() const;
         bool hasFileId(int nFileId) const;
         nlohmann::json toJson() const;
@@ -55,6 +55,22 @@ class ModelDiffGroup {
         std::vector<int> m_vParentFilesIds;
 };
 
+class ModelComment {
+    public:
+        ModelComment();
+        void setId(int nId);
+        void setDefineFileId(int nId);
+        void setComment(const std::string &sTitle);
+
+        nlohmann::json toJson() const;
+
+    private:
+        std::string TAG;
+        int m_nCommentId;
+        int m_nDefineFileId;
+        std::string m_sComment;
+};
+
 class ModelDiffGroups {
     public:
         ModelDiffGroups();
@@ -63,12 +79,15 @@ class ModelDiffGroups {
             const ModelDiffFile &fileDiff
         );
         const std::map<int, ModelDiffGroup> &getGroups();
+        const std::vector<int> &getFilesDefinesIds() const;
+        void setComments(int nDefineFileId, std::vector<ModelComment> vComments);
         nlohmann::json toJson() const;
 
     private:
         std::string TAG;
         std::map<int, ModelDiffGroup> m_mapGroups;
-        // std::map<int, ModelComments> m_mapComments;
+        std::vector<int> m_vFileDefineIds;
+        std::map<int, std::vector<ModelComment>> m_mapComments;
 };
 
-#endif // MODEL_DIFF_GROUPS_H
+#endif // MODELS_DIFF_H

@@ -254,6 +254,38 @@ std::vector<ModelGroupForVersion> MySqlStorageConnection::getGroups(int nVersion
     return vRet;
 }
 
+std::vector<ModelComment> MySqlStorageConnection::getComments(int nDefineFileId) {
+    std::lock_guard<std::mutex> lock(m_mtxConn);
+    std::vector<ModelComment> vRet;
+
+    std::string sQuery =
+        " SELECT"
+        "   t0.id,"
+        "   t0.define_file_id,"
+        "   t0.comment"
+        " FROM webdiff_define_files_comments t0"
+        " WHERE t0.define_file_id = " + std::to_string(nDefineFileId) + " AND hided = 0"
+        " ORDER BY dt_created DESC"
+    ;
+    if (mysql_query(m_pConnection, sQuery.c_str())) {
+        std::string sError(mysql_error(m_pConnection));
+        WsjcppLog::throw_err(TAG, "Problem with database " + sError);
+    } else {
+        MYSQL_RES *pRes = mysql_use_result(m_pConnection);
+        MYSQL_ROW row;
+        // output table name
+        while ((row = mysql_fetch_row(pRes)) != NULL) {
+            ModelComment model;
+            model.setId(paramtoInt(row[0]));
+            model.setDefineFileId(paramtoInt(row[1]));
+            model.setComment(std::string(row[2]));
+            vRet.push_back(model);
+        }
+        mysql_free_result(pRes);
+    }
+    return vRet;
+}
+
 std::vector<ModelFile> MySqlStorageConnection::getFiles(int nVersionId, int nGroupId, int nParentId) {
     std::lock_guard<std::mutex> lock(m_mtxConn);
     std::vector<ModelFile> vRet;
@@ -381,58 +413,6 @@ void MySqlStorageConnection::getDiffFiles(int nLeftVersionId, int nRightVersionI
         mysql_free_result(pRes);
     }
 }
-
-/*
-function get_diff_files($conn, $left_version_id, $right_version_id, $state, $response) {
-  $groups = $response['groups'];
-  $stmt = $conn->prepare('
-  
-  ');
-  $stmt->execute(array($left_version_id, $right_version_id));
-  while ($row = $stmt->fetch()) {
-    $file_id = $row['id'];
-    $file_parent_id = $row['parent_id'];
-    $file_group_id = $row['file_group_id'];
-    $group_name = $row['group_name'];
-    $define_file_id = $row['define_file_id'];
-    $filepath = $row['filepath'];
-    $filename = $row['filename'];
-    $amount_of_children = $row['amount_of_children'];
-    $group_id = 'group'.$file_group_id;
-    if (!isset($groups[$group_id])) {
-      $groups[$group_id] = array(
-        'new' => 0,
-        'missing' => 0,
-        'title' => $group_name,
-        'files' => array(),
-      );
-    }
-    $groups[$group_id][$state] = $groups[$group_id][$state] + 1;
-    $groups[$group_id]['files']['id'.$file_id] = array(
-      'id' => 'id'.$file_id,
-      'filename' => $filename,
-      'parent' => 'id'.$file_parent_id,
-      'group_name' => $group_name,
-      'define_file_id' => intval($define_file_id),
-      'filepath' => $filepath,
-      'amount_of_children' => $amount_of_children,
-      'state' => $state,
-      'comments' => load_comments($conn, intval($define_file_id)),
-    );
-    $files = array();
-    $files = fill_parent_files($conn, $files, $file_parent_id);
-    // $groups[$group_id]['some'] = $files;
-    foreach ($files as $val) {
-      $fid = $val['id'];
-      if (!isset($groups[$group_id]['files'][$fid])) {
-        $groups[$group_id]['files'][$fid] = $val;
-      }
-    }
-  }
-  $response['groups'] = $groups;
-  return $response;
-}
-*/
 
 // ----------------------------------------------------------------------
 // MySqlStorage
@@ -579,12 +559,10 @@ void MySqlStorage::getDiff(int nLeftVersionId, int nRightVersionId, ModelDiffGro
             pConn->findAndAddFile(group, nFileId, diffGroups, vIds);
         }
     }
-    // diffGroups
 
-    // for (int i = 0; i < vMissing.size(); i++) {
-    //     vRet.push_back(vMissing[i]);
-    // }
-    // for (int i = 0; i < vNew.size(); i++) {
-    //     vRet.push_back(vNew[i]);
-    // }
+    const std::vector<int> &vDefineFilesIds = diffGroups.getFilesDefinesIds();
+    for (int i = 0; i < vDefineFilesIds.size(); i++) {
+        int nDefineFileId = vDefineFilesIds[i];
+        diffGroups.setComments(nDefineFileId, pConn->getComments(nDefineFileId));
+    }
 }

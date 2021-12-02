@@ -1,4 +1,4 @@
-#include "model_diff_groups.h"
+#include "models_diff.h"
 #include <iostream>
 
 // ModelDiffFile
@@ -36,6 +36,10 @@ void ModelDiffFile::setVersionId(int nVersionId) {
 
 void ModelDiffFile::setDefineFileId(int nDefineFileId) {
     m_nDefineFileId = nDefineFileId;
+}
+
+int ModelDiffFile::getDefineFileId() const {
+    return m_nDefineFileId;
 }
 
 void ModelDiffFile::setAmountOfChildren(int nAmountOfChildren) {
@@ -101,10 +105,6 @@ const ModelGroup &ModelDiffGroup::getGroup() const {
     return m_group;
 }
 
-const std::vector<int> &ModelDiffGroup::getFilesIds() const {
-    return m_vFilesIds;
-}
-
 const std::vector<int> &ModelDiffGroup::getParentFilesIds() const {
     return m_vParentFilesIds;
 }
@@ -128,6 +128,34 @@ nlohmann::json ModelDiffGroup::toJson() const {
     return jsonRet;
 }
 
+// ModelComment
+
+ModelComment::ModelComment() {
+    m_nCommentId = -1;
+    m_nDefineFileId = -1;
+    m_sComment = "";
+}
+
+void ModelComment::setId(int nId) {
+    m_nCommentId = nId;
+}
+
+void ModelComment::setDefineFileId(int nId) {
+    m_nDefineFileId = nId;
+}
+
+void ModelComment::setComment(const std::string &sTitle) {
+    m_sComment = sTitle;
+}
+
+nlohmann::json ModelComment::toJson() const {
+    nlohmann::json jsonRet;
+    jsonRet["id"] = m_nCommentId;
+    jsonRet["define_file_id"] = m_nDefineFileId;
+    jsonRet["comment"] = m_sComment;
+    return jsonRet;
+}
+
 // ModelDiffGroups
 
 ModelDiffGroups::ModelDiffGroups() {
@@ -142,18 +170,42 @@ void ModelDiffGroups::addDiffFile(
         m_mapGroups[group.getId()] = ModelDiffGroup(group);
     }
     m_mapGroups[group.getId()].addDiffFile(fileDiff);
+    int nDefineFileId = fileDiff.getDefineFileId();
+    if (std::find(m_vFileDefineIds.begin(), m_vFileDefineIds.end(), nDefineFileId) == m_vFileDefineIds.end()) {
+        m_vFileDefineIds.push_back(nDefineFileId);
+    }
 }
 
 const std::map<int, ModelDiffGroup> &ModelDiffGroups::getGroups() {
     return m_mapGroups;
 }
 
+const std::vector<int> &ModelDiffGroups::getFilesDefinesIds() const {
+    return m_vFileDefineIds;
+}
+
+void ModelDiffGroups::setComments(int nDefineFileId, std::vector<ModelComment> vComments) {
+    m_mapComments[nDefineFileId] = vComments;
+}
+
 nlohmann::json ModelDiffGroups::toJson() const {
     nlohmann::json jsonRet;
+    jsonRet["groups"] = nlohmann::json();
     for (auto it = m_mapGroups.begin(); it != m_mapGroups.end(); ++it) {
         int nGroupId = it->first;
         std::string sGroupId = "group" + std::to_string(nGroupId);
-        jsonRet[sGroupId] = it->second.toJson();
+        jsonRet["groups"][sGroupId] = it->second.toJson();
+    }
+    jsonRet["comments"] = nlohmann::json();
+    for (auto it = m_mapComments.begin(); it != m_mapComments.end(); ++it) {
+        int nDefineFileId = it->first;
+        std::string sDefineFileId = "dfid" + std::to_string(nDefineFileId);
+        jsonRet["comments"][sDefineFileId] = nlohmann::json::array();
+        const std::vector<ModelComment> &vComments = it->second;
+        for (int i = 0; i < vComments.size(); i++) {
+            jsonRet["comments"][sDefineFileId].push_back(vComments[i].toJson());
+        }
     }
     return jsonRet;
 }
+

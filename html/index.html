@@ -146,9 +146,11 @@ body {
                 // _subhtml += '<div class="file-check" file_id="' + fid + '" ></div>'
               }
               _subhtml += '<div class="comments" define_file_id="' + define_file_id + '">';
-              if (fileinfo['comments'] && fileinfo['comments'].length > 0) {
-                for (var cm in fileinfo['comments']) {
-                  cm = fileinfo['comments'][cm];
+              var dfid = "dfid" + define_file_id;
+              if (document.diff_result['comments'] && document.diff_result['comments'][dfid]) {
+                var comments = document.diff_result['comments'][dfid];
+                for (var cm in comments) {
+                  cm = comments[cm];
                   _subhtml += '<div class="comment" comment_id="' + cm['id'] + '">'
                     + '<div class="comment-text">(c#' + cm['id'] + ') ' + cm['comment'] + '</div>'
                     + '<div class="comment-hide" comment_id="' + cm['id'] + '"></div>'
