@@ -94,12 +94,12 @@ int WebdiffHttpServer::httpApiCommentHide(HttpRequest* req, HttpResponse* resp) 
     resp->content_type = APPLICATION_JSON;
     req->ParseBody();
 
+    int nCommentId = req->json["comment_id"];
+    m_pStorage->hideComment(nCommentId);
+
     // resp->json = req->json;
-    resp->json["req_body"] = req->body;
-    resp->json["req_json"] = req->json;
-    resp->json["int"] = 123;
-    resp->json["float"] = 3.14;
-    resp->json["string"] = "hello";
+    resp->json["jsonrpc"] = "2.0";
+    resp->json["result"] = true;
     resp->json["url"] = req->url;
     return 200;
 }

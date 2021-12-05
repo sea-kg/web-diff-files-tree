@@ -437,6 +437,20 @@ ModelComment MySqlStorageConnection::addComment(int nDefineFileId, const std::st
     return comment;
 }
 
+void MySqlStorageConnection::hideComment(int nCommentId) {
+    std::lock_guard<std::mutex> lock(m_mtxConn);
+    std::string sQuery =
+        "  UPDATE webdiff_define_files_comments SET hided = 1 WHERE id = " + std::to_string(nCommentId) + ";"
+    ;
+    // WsjcppLog::info(TAG, sQuery);
+    if (mysql_query(m_pConnection, sQuery.c_str())) {
+        std::string sError(mysql_error(m_pConnection));
+        WsjcppLog::throw_err(TAG, "Problem with database " + sError);
+    } else {
+        // nothing - it's ok
+    }
+}
+
 // ----------------------------------------------------------------------
 // MySqlStorage
 
@@ -593,4 +607,9 @@ void MySqlStorage::getDiff(int nLeftVersionId, int nRightVersionId, ModelDiffGro
 ModelComment MySqlStorage::addComment(int nDefineFileId, const std::string &sComment) {
     MySqlStorageConnection *pConn = getConnection();
     return pConn->addComment(nDefineFileId, sComment);
+}
+
+void MySqlStorage::hideComment(int nCommentId) {
+    MySqlStorageConnection *pConn = getConnection();
+    pConn->hideComment(nCommentId);
 }

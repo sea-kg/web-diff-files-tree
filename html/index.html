@@ -108,10 +108,11 @@ body {
             
             // if (comment) {
             api.comment_hide({
-              "comment_id": comment_id
+              "comment_id": parseInt(comment_id)
             }).fail(function(error) {
               console.log(error);
             }).done(function(result) {
+              // result = result['result'];
               $('.comment[comment_id=' + comment_id + ']').remove();
             })
             rebindClick();
