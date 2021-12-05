@@ -5,6 +5,7 @@ import zipfile
 import os
 import sys
 import re
+import stat
 import requests
 
 # BASEURL = "http://localhost:8071/"
@@ -39,6 +40,24 @@ for _zip_filename in files:
 
     zip = zipfile.ZipFile(_zip_filename)
     reg_files = zip.namelist()
+    # print(reg_files)
+    for f in reg_files:
+        # https://docs.python.org/3/library/zipfile.html#zipinfo-objects
+        fi = zip.getinfo(f)
+        filemode = stat.filemode(fi.external_attr >> 16)
+        print(
+            f + " size: "
+            + str(fi.file_size)
+            + ", compress_size: "
+            + str(fi.compress_size)
+            + ", is_dir: "
+            + str(fi.is_dir())
+            + ", date_time: "
+            + str(fi.date_time)
+            + ", filemode: "
+            + str(filemode)
+        )
+
     _all = len(reg_files)
     _uploaded = 0
     print(" ------- ")
