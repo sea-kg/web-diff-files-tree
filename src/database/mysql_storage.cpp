@@ -414,6 +414,29 @@ void MySqlStorageConnection::getDiffFiles(int nLeftVersionId, int nRightVersionI
     }
 }
 
+ModelComment MySqlStorageConnection::addComment(int nDefineFileId, const std::string &sComment) {
+    std::lock_guard<std::mutex> lock(m_mtxConn);
+    ModelComment comment;
+    std::string sQuery =
+        " INSERT INTO webdiff_define_files_comments(define_file_id, comment, dt_created)"
+        " VALUES(" + std::to_string(nDefineFileId) + "," + this->prepareStringValue(sComment) + ",NOW());"   ;
+    ;
+    // WsjcppLog::info(TAG, sQuery);
+    if (mysql_query(m_pConnection, sQuery.c_str())) {
+        std::string sError(mysql_error(m_pConnection));
+        WsjcppLog::throw_err(TAG, "Problem with database " + sError);
+    } else {
+        // mysql_insert_id()
+        int nLastInsertedId = mysql_insert_id(m_pConnection);
+        MYSQL_RES *pRes = mysql_use_result(m_pConnection);
+        mysql_free_result(pRes);
+        comment.setId(nLastInsertedId);
+        comment.setDefineFileId(nDefineFileId);
+        comment.setComment(sComment);
+    }
+    return comment;
+}
+
 // ----------------------------------------------------------------------
 // MySqlStorage
 
@@ -565,4 +588,9 @@ void MySqlStorage::getDiff(int nLeftVersionId, int nRightVersionId, ModelDiffGro
         int nDefineFileId = vDefineFilesIds[i];
         diffGroups.setComments(nDefineFileId, pConn->getComments(nDefineFileId));
     }
+}
+
+ModelComment MySqlStorage::addComment(int nDefineFileId, const std::string &sComment) {
+    MySqlStorageConnection *pConn = getConnection();
+    return pConn->addComment(nDefineFileId, sComment);
 }

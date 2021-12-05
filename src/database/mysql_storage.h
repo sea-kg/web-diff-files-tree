@@ -29,7 +29,7 @@ class MySqlStorageConnection {
         std::vector<ModelFile> getFiles(int nVersionId, int nGroupId, int nParentId);
         void findAndAddFile(const ModelGroup &group, int nFileId, ModelDiffGroups &diffGroups, std::vector<int> &vParentFileIds);
         void getDiffFiles(int nLeftVersionId, int nRightVersionId, const std::string &sState, ModelDiffGroups &diffGroups);
-        
+        ModelComment addComment(int nDefineFileId, const std::string &sComment);
 
     private:
         std::string prepareStringValue(const std::string &sValue);
@@ -51,6 +51,7 @@ class MySqlStorage {
         std::vector<ModelGroupForVersion> getGroups(int nVersionId);
         std::vector<ModelFile> getFiles(int nVersionId, int nGroupId, int nParentId);
         void getDiff(int nLeftVersionId, int nRightVersionId, ModelDiffGroups &groups);
+        ModelComment addComment(int nDefineFileId, const std::string &sComment);
 
     private:
         MySqlStorageConnection *connect();

@@ -85,11 +85,12 @@ body {
             
             if (comment) {
               api.comment_add({
-                "define_file_id": define_file_id,
+                "define_file_id": parseInt(define_file_id),
                 "comment": comment,
               }).fail(function(error) {
                 console.log(error);
               }).done(function(result) {
+                result = result['result'];
                 $('.comments[define_file_id=' + define_file_id + ']').prepend(
                   '<div class="comment" comment_id="' + result['id'] + '">'
                   + '<div class="comment-text">(c#' + result['id'] + ') ' + result['comment'] + '</div>'

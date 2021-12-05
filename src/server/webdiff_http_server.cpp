@@ -76,12 +76,13 @@ int WebdiffHttpServer::httpApiCommentAdd(HttpRequest* req, HttpResponse* resp) {
     resp->content_type = APPLICATION_JSON;
     req->ParseBody();
 
-    // resp->json = req->json;
-    resp->json["req_body"] = req->body;
-    resp->json["req_json"] = req->json;
-    resp->json["int"] = 123;
-    resp->json["float"] = 3.14;
-    resp->json["string"] = "hello";
+    int nDefineFileId = req->json["define_file_id"];
+    std::string sComment = req->json["comment"];
+    
+    ModelComment comment = m_pStorage->addComment(nDefineFileId, sComment);
+
+    resp->json["jsonrpc"] = "2.0";
+    resp->json["result"] = comment.toJson();
     resp->json["url"] = req->url;
     return 200;
 }
