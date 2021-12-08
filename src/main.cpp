@@ -17,6 +17,7 @@ int main(int argc, const char* argv[]) {
     WsjcppCore::initRandom();
 
     auto *pStorage = new MySqlStorage();
+    pStorage->upgrade();
     // auto *pConnection = pStorage->connect();
     if (!pStorage->loadCache()) {
         WsjcppLog::throw_err(TAG, "Could not load cache");

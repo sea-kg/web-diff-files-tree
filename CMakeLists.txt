@@ -29,7 +29,9 @@ list (APPEND WSJCPP_SOURCES "./src/server/webdiff_server.cpp")
 list (APPEND WSJCPP_SOURCES "./src/server/player_context.cpp")
 
 # libhv
+SET(BUILD_EXAMPLES OFF CACHE BOOL "build examples")
 add_subdirectory(src-libhv)
+
 list (APPEND WSJCPP_LIBRARIES hv_static)
 list (APPEND WSJCPP_INCLUDE_DIRS "${PROJECT_BINARY_DIR}/src-libhv/include/hv")
 

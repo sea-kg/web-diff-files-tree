@@ -5,3 +5,6 @@
 /web-diff-files-tree
 /libhv.*.log
 .logs/
+mysql_data
+docker_tmp
+web-diff-files-tree_mysql_data

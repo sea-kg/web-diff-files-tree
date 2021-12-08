@@ -1,0 +1,10 @@
+FROM debian:11
+
+RUN apt-get update && apt-get install -y \
+    cmake gcc g++ make pkg-config \
+    default-libmysqlclient-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt/web-diff-files-tree
+
+CMD ["sleep", "3600"]

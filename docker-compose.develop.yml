@@ -1,12 +1,11 @@
-
 version: '3'
 
 services:
-  webdifffilestree_db:
+  webdifffilestree_develop_db:
     image: mysql:5.7
     command: --default-authentication-plugin=mysql_native_password
     volumes:
-      - "./web-diff-files-tree_mysql_data:/var/lib/mysql"
+      - "./mysql_data:/var/lib/mysql"
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: KzhyntJxwt
@@ -14,22 +13,29 @@ services:
       MYSQL_USER: webdiffu
       MYSQL_PASSWORD: jET3E4W9vm
     networks:
-      - webdifffilestree_net
+      - webdifffilestree_develop_net
 
-  webdifffilestree_server:
-    image: sea5kg/web-diff-files-tree:latest
+  webdifffilestree_develop_server:
+    image: sea5kg/web-diff-files-tree:develop
+    container_name: webdifffilestree_develop_server
+    build:
+      context: .
+      dockerfile: Dockerfile-develop
     ports:
       - 8071:1234
+    volumes:
+      - "./:/opt/web-diff-files-tree"
+      - "./docker_tmp:/opt/web-diff-files-tree/tmp"
     environment:
-      WEBDIFF_DB_HOST: webdifffilestree_db
+      WEBDIFF_DB_HOST: webdifffilestree_develop_db
       WEBDIFF_DB_NAME: webdiff
       WEBDIFF_DB_USER: webdiffu
       WEBDIFF_DB_PASS: jET3E4W9vm
       WEBDIFF_DB_PORT: 3306
     restart: always
     networks:
-      - webdifffilestree_net
+      - webdifffilestree_develop_net
 
 networks:
-  webdifffilestree_net:
+  webdifffilestree_develop_net:
     driver: bridge

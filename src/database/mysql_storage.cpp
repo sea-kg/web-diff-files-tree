@@ -5,7 +5,7 @@
 
 MySqlStorageConnection::MySqlStorageConnection(MYSQL *pConn) {
     m_pConnection = pConn;
-    TAG = "MySqlStorageConenction";
+    TAG = "MySqlStorageConnection";
     m_nCreated = WsjcppCore::getCurrentTimeInMilliseconds();
 }
 
@@ -35,95 +35,52 @@ bool MySqlStorageConnection::executeQuery(const std::string &sQuery) {
 
 // ----------------------------------------------------------------------
 
-std::string MySqlStorageConnection::lastDatabaseVersion() {
+int MySqlStorageConnection::lastDatabaseVersion() {
     std::lock_guard<std::mutex> lock(m_mtxConn);
 
-    std::string sLastVersion = "";
-    std::string sQuery = "SELECT version FROM updates ORDER BY id DESC LIMIT 0,1";
+    int nLastVersion = 0;
+    std::string sQuery = "SELECT version FROM webdiff_db_updates ORDER BY dt DESC, version DESC LIMIT 0,1";
 
     if (mysql_query(m_pConnection, sQuery.c_str())) {
         std::string sError(mysql_error(m_pConnection));
-        if (sError.find("updates' doesn't exist") != std::string::npos) {
-            WsjcppLog::warn(TAG, "Creating table updates .... ");
+        if (sError.find("doesn't exist") != std::string::npos) {
+            WsjcppLog::warn(TAG, "Creating table webdiff_db_updates .... ");
             std::string sTableDbUpdates = 
-                "CREATE TABLE IF NOT EXISTS updates ("
-                "  id INT NOT NULL AUTO_INCREMENT,"
-                "  version varchar(255) DEFAULT NULL,"
-                "  description text,"
-                "  datetime_update datetime DEFAULT NULL,"
-                "  PRIMARY KEY (`id`)"
-                ") ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;";
+                " CREATE TABLE webdiff_db_updates ("
+                "     `id` int(11) NOT NULL AUTO_INCREMENT,"
+                "     `version` int(11) NOT NULL,"
+                "     `dt` datetime NOT NULL,"
+                "     PRIMARY KEY (`id`)"
+                " ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;"
+            ;
             if (mysql_query(m_pConnection, sTableDbUpdates.c_str())) {
                 std::string sError2(mysql_error(m_pConnection));
-                WsjcppLog::err(TAG, "Problem on create table updates " + sError2);
-                return "error";
+                WsjcppLog::err(TAG, "Problem on create table webdiff_db_updates " + sError2);
+                return -2;
             } else {
-                WsjcppLog::ok(TAG, "Table updates success created");
-                sLastVersion = "";
-                return "";
+                WsjcppLog::ok(TAG, "Table webdiff_db_updates success created");
+                return nLastVersion;
             }
         } else {
             WsjcppLog::err(TAG, "Problem with database " + sError);
-            return "error";
+            return -1;
         }
     } else {
         MYSQL_RES *pRes = mysql_use_result(m_pConnection);
         MYSQL_ROW row;
         // output table name
         if ((row = mysql_fetch_row(pRes)) != NULL) {
-            sLastVersion = std::string(row[0]);
+            nLastVersion = paramtoInt(row[0]);
         }
         mysql_free_result(pRes);
     }
-    return sLastVersion;
+    return nLastVersion;
 }
 
-// ----------------------------------------------------------------------
-
-std::vector<std::string> MySqlStorageConnection::getInstalledVersions() {
+bool MySqlStorageConnection::insertUpdateInfo(int nVersion) {
     std::lock_guard<std::mutex> lock(m_mtxConn);
-    std::vector<std::string> vVersions;
-
-    std::string sQuery = "SELECT version FROM updates ORDER BY id";
-
-    if (mysql_query(m_pConnection, sQuery.c_str())) {
-        std::string sError(mysql_error(m_pConnection));
-        if (sError.find("updates' doesn't exist") != std::string::npos) {
-            WsjcppLog::warn(TAG, "Creating table updates .... ");
-            std::string sTableDbUpdates = 
-                "CREATE TABLE IF NOT EXISTS updates ("
-                "  id INT NOT NULL AUTO_INCREMENT,"
-                "  version varchar(255) DEFAULT NULL,"
-                "  description text,"
-                "  datetime_update datetime DEFAULT NULL,"
-                "  PRIMARY KEY (`id`)"
-                ") ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;";
-            if (mysql_query(m_pConnection, sTableDbUpdates.c_str())) {
-                std::string sError2(mysql_error(m_pConnection));
-                WsjcppLog::throw_err(TAG, "Problem on create table updates " + sError2);
-            } else {
-                WsjcppLog::ok(TAG, "Table updates success created");
-                return vVersions;
-            }
-        } else {
-            WsjcppLog::throw_err(TAG, "Problem with database " + sError);
-        }
-    } else {
-        MYSQL_RES *pRes = mysql_use_result(m_pConnection);
-        MYSQL_ROW row;
-        // output table name
-        while ((row = mysql_fetch_row(pRes)) != NULL) {
-            vVersions.push_back(std::string(row[0]));
-        }
-        mysql_free_result(pRes);
-    }
-    return vVersions;
-}
-
-bool MySqlStorageConnection::insertUpdateInfo(const std::string &sVersion, const std::string &sDescription) {
-    std::lock_guard<std::mutex> lock(m_mtxConn);
-    std::string sInsertNewVersion = "INSERT INTO updates(version, description, datetime_update) "
-        " VALUES(" + this->prepareStringValue(sVersion) + ", " + this->prepareStringValue(sDescription) + ",NOW());";
+    std::string sInsertNewVersion = "INSERT INTO webdiff_db_updates(version, dt) "
+        " VALUES(" + std::to_string(nVersion) + ", NOW());";
     if (mysql_query(m_pConnection, sInsertNewVersion.c_str())) {
         WsjcppLog::err(TAG, "Could not insert row to updates: " + std::string(mysql_error(m_pConnection)));
         return false;
@@ -452,6 +409,17 @@ void MySqlStorageConnection::hideComment(int nCommentId) {
 }
 
 // ----------------------------------------------------------------------
+// MySqlStorageUpdate
+
+MySqlStorageUpdate::MySqlStorageUpdate(int nVersion) {
+    m_nVersion = nVersion;
+}
+
+int MySqlStorageUpdate::getVersion() {
+    return m_nVersion;
+}
+
+// ----------------------------------------------------------------------
 // MySqlStorage
 
 MySqlStorage::MySqlStorage() {
@@ -488,6 +456,16 @@ MySqlStorage::MySqlStorage() {
     WsjcppLog::info(TAG, "Database name: " + m_sDatabaseName);
     WsjcppLog::info(TAG, "Database user: " + m_sDatabaseUser);
     WsjcppLog::info(TAG, "Database password: (hided)");
+
+    m_vDatabaseUpdates.push_back(new MySqlStorageUpdate_0001());
+    m_vDatabaseUpdates.push_back(new MySqlStorageUpdate_0002());
+    m_vDatabaseUpdates.push_back(new MySqlStorageUpdate_0003());
+    m_vDatabaseUpdates.push_back(new MySqlStorageUpdate_0004());
+    m_vDatabaseUpdates.push_back(new MySqlStorageUpdate_0005());
+    m_vDatabaseUpdates.push_back(new MySqlStorageUpdate_0006());
+    m_vDatabaseUpdates.push_back(new MySqlStorageUpdate_0007());
+    m_vDatabaseUpdates.push_back(new MySqlStorageUpdate_0008());
+    m_vDatabaseUpdates.push_back(new MySqlStorageUpdate_0009());
 }
 
 MySqlStorageConnection * MySqlStorage::connect() {
@@ -506,6 +484,7 @@ MySqlStorageConnection * MySqlStorage::connect() {
     }
     return pConn;
 }
+
 
 MySqlStorageConnection * MySqlStorage::getConnection() {
     std::lock_guard<std::mutex> lock(m_mtxStorageConnections);
@@ -537,6 +516,34 @@ MySqlStorageConnection * MySqlStorage::getConnection() {
         }
     }
     return pStorageConnection;
+}
+
+void MySqlStorage::upgrade() {
+    MySqlStorageConnection *pConn = getConnection(); 
+    int nDbVersion = pConn->lastDatabaseVersion();
+    if (nDbVersion < 0) {
+        WsjcppLog::throw_err(TAG, "Could not get latest version of database");
+    }
+    WsjcppLog::info(TAG, "Last database version: " + std::to_string(nDbVersion));
+    bool bFoundUpdate = true;
+    while(bFoundUpdate) {
+        bFoundUpdate = false;
+        for (int i = 0; i < m_vDatabaseUpdates.size(); i++) {
+            int nUpdateVersion = m_vDatabaseUpdates[i]->getVersion();
+            if (nUpdateVersion - 1 == nDbVersion) {
+                if (m_vDatabaseUpdates[i]->apply(pConn)) {
+                    if (!pConn->insertUpdateInfo(nUpdateVersion)) {
+                        WsjcppLog::throw_err(TAG, "Could not insert version");
+                    }
+                    bFoundUpdate = true;
+                    nDbVersion = nUpdateVersion;
+                    WsjcppLog::ok(TAG, "Applyed update " + std::to_string(nDbVersion));
+                } else {
+                    WsjcppLog::throw_err(TAG, "Could not apply update " + std::to_string(nDbVersion));
+                }
+            }
+        }
+    }
 }
 
 bool MySqlStorage::loadCache() {
@@ -612,4 +619,280 @@ ModelComment MySqlStorage::addComment(int nDefineFileId, const std::string &sCom
 void MySqlStorage::hideComment(int nCommentId) {
     MySqlStorageConnection *pConn = getConnection();
     pConn->hideComment(nCommentId);
+}
+
+// ----------------------------------------------------------------------
+// MySqlStorageUpdate_0001
+
+MySqlStorageUpdate_0001::MySqlStorageUpdate_0001() 
+: MySqlStorageUpdate(1) {
+    TAG = "MySqlStorageUpdate_0001";
+}
+
+bool MySqlStorageUpdate_0001::apply(MySqlStorageConnection *pConn) {
+    bool bResult = pConn->executeQuery(
+        " CREATE TABLE `webdiff_users` ("
+        "     `id` int(11) NOT NULL AUTO_INCREMENT,"
+        "     `username` varchar(255) NOT NULL,"
+        "     `userpass` varchar(100) NOT NULL,"
+        "     `role` varchar(10) NOT NULL,"
+        "     `comment` varchar(1024) NOT NULL,"
+        "     `created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+        "     PRIMARY KEY (`id`),"
+        "     UNIQUE(`username`)"
+        " ) ENGINE=InnoDB DEFAULT CHARSET=utf8, AUTO_INCREMENT=1;"
+    );
+    if (!bResult) {
+        WsjcppLog::err(TAG, "Could not create table webdiff_users");
+        return false;
+    }
+
+    bResult = pConn->executeQuery(
+        " INSERT INTO webdiff_users(username,userpass,role,comment) VALUES(\"admin\",\"d033e22ae348aeb5660fc2140aec35850c4da997\",\"admin\",\"\") "
+    );
+    if (!bResult) {
+        WsjcppLog::err(TAG, "Could not insert into table webdiff_users");
+        return false;
+    }
+
+    bResult = pConn->executeQuery(
+        " CREATE TABLE `webdiff_users_tokens` ("
+        "     `id` int(11) NOT NULL AUTO_INCREMENT,"
+        "     `token` varchar(255) NOT NULL,"
+        "     `role` varchar(10) NOT NULL,"
+        "     `userid` int(11) NOT NULL,"
+        "     `created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+        "     PRIMARY KEY (`id`),"
+        "     UNIQUE(`token`)"
+        " ) ENGINE=InnoDB DEFAULT CHARSET=utf8, AUTO_INCREMENT=1;"
+    );
+    if (!bResult) {
+        WsjcppLog::err(TAG, "Could not create table webdiff_users_tokens");
+        return false;
+    }
+
+    bResult = pConn->executeQuery(
+        " CREATE TABLE `webdiff_versions` ("
+        "     `id` int(11) NOT NULL AUTO_INCREMENT,"
+        "     `name` varchar(255) NOT NULL,"
+        "     `comment` varchar(255) NOT NULL,"
+        "     PRIMARY KEY (`id`)"
+        " ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;"
+    );
+    if (!bResult) {
+        WsjcppLog::err(TAG, "Could not create table webdiff_versions");
+        return false;
+    }
+    return true;
+}
+
+
+// ----------------------------------------------------------------------
+// MySqlStorageUpdate_0002
+
+MySqlStorageUpdate_0002::MySqlStorageUpdate_0002() 
+: MySqlStorageUpdate(2) {
+    TAG = "MySqlStorageUpdate_0002";
+}
+
+bool MySqlStorageUpdate_0002::apply(MySqlStorageConnection *pConn) {
+    bool bResult = pConn->executeQuery(
+        " CREATE TABLE `webdiff_file_groups` ("
+        "     `id` int(11) NOT NULL AUTO_INCREMENT,"
+        "     `name` varchar(255) NOT NULL,"
+        "     PRIMARY KEY (`id`)"
+        " ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;"
+    );
+    if (!bResult) {
+        WsjcppLog::err(TAG, "Could not create table webdiff_file_groups");
+        return false;
+    }
+
+    bResult = pConn->executeQuery(
+        " CREATE TABLE `webdiff_define_files` ("
+        "     `id` int(11) NOT NULL AUTO_INCREMENT,"
+        "     `file_group_id` int(11) NOT NULL,"
+        "     `filepath` varchar(4096) NOT NULL,"
+        "     PRIMARY KEY (`id`)"
+        " ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;"
+    );
+    if (!bResult) {
+        WsjcppLog::err(TAG, "Could not create table webdiff_define_files");
+        return false;
+    }
+
+    bResult = pConn->executeQuery(
+        " CREATE TABLE `webdiff_define_files_comments` ("
+        "     `id` int(11) NOT NULL AUTO_INCREMENT,"
+        "     `define_file_id` int(11) NOT NULL,"
+        "     `comment` TEXT NOT NULL,"
+        "     `dt_created` datetime NOT NULL,"
+        "     PRIMARY KEY (`id`)"
+        " ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;"
+    );
+    if (!bResult) {
+        WsjcppLog::err(TAG, "Could not create table webdiff_define_files_comments");
+        return false;
+    }
+
+    return true;
+}
+
+// ----------------------------------------------------------------------
+// MySqlStorageUpdate_0003
+
+MySqlStorageUpdate_0003::MySqlStorageUpdate_0003() 
+: MySqlStorageUpdate(3) {
+    TAG = "MySqlStorageUpdate_0003";
+}
+
+bool MySqlStorageUpdate_0003::apply(MySqlStorageConnection *pConn) {
+    bool bResult = pConn->executeQuery(
+        " CREATE TABLE `webdiff_files` ("
+        "     `id` int(11) NOT NULL AUTO_INCREMENT,"
+        "     `version_id` int(11) NOT NULL,"
+        "     `define_file_id` int(11) NOT NULL,"
+        "     PRIMARY KEY (`id`)"
+        " ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;"
+    );
+    if (!bResult) {
+        WsjcppLog::err(TAG, "Could not create table webdiff_files");
+        return false;
+    }
+    return true;
+}
+
+// ----------------------------------------------------------------------
+// MySqlStorageUpdate_0004
+
+MySqlStorageUpdate_0004::MySqlStorageUpdate_0004() 
+: MySqlStorageUpdate(4) {
+    TAG = "MySqlStorageUpdate_0004";
+}
+
+bool MySqlStorageUpdate_0004::apply(MySqlStorageConnection *pConn) {
+    bool bResult = pConn->executeQuery(
+        " ALTER TABLE webdiff_define_files ADD childs int(11) DEFAULT 0; "
+    );
+    if (!bResult) {
+        WsjcppLog::err(TAG, "Could not modify table webdiff_define_files (add childs)");
+        return false;
+    }
+    
+    bResult = pConn->executeQuery(
+        " ALTER TABLE webdiff_define_files ADD parent_id int(11) DEFAULT 0; "
+    );
+    if (!bResult) {
+        WsjcppLog::err(TAG, "Could not modify table webdiff_define_files (add parent_id)");
+        return false;
+    }
+
+    return true;
+}
+
+// ----------------------------------------------------------------------
+// MySqlStorageUpdate_0005
+
+MySqlStorageUpdate_0005::MySqlStorageUpdate_0005() 
+: MySqlStorageUpdate(5) {
+    TAG = "MySqlStorageUpdate_0005";
+}
+
+bool MySqlStorageUpdate_0005::apply(MySqlStorageConnection *pConn) {
+    bool bResult = pConn->executeQuery(
+        " ALTER TABLE webdiff_define_files ADD `filename` VARCHAR(255) DEFAULT ''; "
+    );
+    if (!bResult) {
+        WsjcppLog::err(TAG, "Could not modify table webdiff_define_files (add filename)");
+        return false;
+    }
+
+    return true;
+}
+
+// ----------------------------------------------------------------------
+// MySqlStorageUpdate_0006
+
+MySqlStorageUpdate_0006::MySqlStorageUpdate_0006() 
+: MySqlStorageUpdate(6) {
+    TAG = "MySqlStorageUpdate_0006";
+}
+
+bool MySqlStorageUpdate_0006::apply(MySqlStorageConnection *pConn) {
+    bool bResult = pConn->executeQuery(
+        " ALTER TABLE webdiff_files ADD file_group_id int(11) DEFAULT 0; "
+    );
+    if (!bResult) {
+        WsjcppLog::err(TAG, "Could not modify table webdiff_files (add file_group_id)");
+        return false;
+    }
+
+    return true;
+}
+
+// ----------------------------------------------------------------------
+// MySqlStorageUpdate_0007
+
+MySqlStorageUpdate_0007::MySqlStorageUpdate_0007() 
+: MySqlStorageUpdate(7) {
+    TAG = "MySqlStorageUpdate_0007";
+}
+
+bool MySqlStorageUpdate_0007::apply(MySqlStorageConnection *pConn) {
+    bool bResult = pConn->executeQuery(
+        " ALTER TABLE webdiff_define_files DROP COLUMN file_group_id; "
+    );
+    if (!bResult) {
+        WsjcppLog::err(TAG, "Could not modify table webdiff_define_files (remove file_group_id)");
+        return false;
+    }
+
+    return true;
+}
+
+// ----------------------------------------------------------------------
+// MySqlStorageUpdate_0008
+
+MySqlStorageUpdate_0008::MySqlStorageUpdate_0008() 
+: MySqlStorageUpdate(8) {
+    TAG = "MySqlStorageUpdate_0008";
+}
+
+bool MySqlStorageUpdate_0008::apply(MySqlStorageConnection *pConn) {
+    bool bResult = pConn->executeQuery(
+        " ALTER TABLE webdiff_files ADD parent_id int(11) DEFAULT 0; "
+    );
+    if (!bResult) {
+        WsjcppLog::err(TAG, "Could not modify table webdiff_files (add parent_id)");
+        return false;
+    }
+
+    bResult = pConn->executeQuery(
+        " ALTER TABLE webdiff_files ADD amount_of_children int(11) DEFAULT 0; "
+    );
+    if (!bResult) {
+        WsjcppLog::err(TAG, "Could not modify table webdiff_files (add amount_of_children)");
+        return false;
+    }
+
+    return true;
+}
+
+// ----------------------------------------------------------------------
+// MySqlStorageUpdate_0009
+
+MySqlStorageUpdate_0009::MySqlStorageUpdate_0009() 
+: MySqlStorageUpdate(9) {
+    TAG = "MySqlStorageUpdate_0009";
+}
+
+bool MySqlStorageUpdate_0009::apply(MySqlStorageConnection *pConn) {
+    bool bResult = pConn->executeQuery(
+        " ALTER TABLE webdiff_define_files_comments ADD hided int(11) DEFAULT 0; "
+    );
+    if (!bResult) {
+        WsjcppLog::err(TAG, "Could not modify table webdiff_files (add parent_id)");
+        return false;
+    }
+    return true;
 }
