@@ -43,7 +43,7 @@ def upload_files(data_request, _uploaded, _all):
 def getfileinfo(_zip, _reg_file):
     ret = {}
     fi = _zip.getinfo(_reg_file)
-    ret["name"] = remove_first_folder(_reg_file)
+    ret["path"] = remove_first_folder(_reg_file)
     ret["size"] = fi.file_size
     ret["mode"] = stat.filemode(fi.external_attr >> 16)
     ret["compress_size"] = fi.compress_size
