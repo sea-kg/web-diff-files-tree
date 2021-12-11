@@ -408,6 +408,82 @@ void MySqlStorageConnection::hideComment(int nCommentId) {
     }
 }
 
+ModelVersion MySqlStorageConnection::insertVersion(const std::string &sVersion) {
+    std::lock_guard<std::mutex> lock(m_mtxConn);
+    ModelVersion ver;
+    std::string sQuery =
+        " INSERT INTO webdiff_versions(`name`, comment)"
+        " VALUES(" + this->prepareStringValue(sVersion) + ",'');";
+    ;
+    // WsjcppLog::info(TAG, sQuery);
+    if (mysql_query(m_pConnection, sQuery.c_str())) {
+        std::string sError(mysql_error(m_pConnection));
+        WsjcppLog::throw_err(TAG, "Problem with database " + sError);
+    } else {
+        // mysql_insert_id()
+        int nLastInsertedId = mysql_insert_id(m_pConnection);
+        MYSQL_RES *pRes = mysql_use_result(m_pConnection);
+        mysql_free_result(pRes);
+        ver.setId(nLastInsertedId);
+        ver.setName(sVersion);
+    }
+    return ver;
+}
+
+ModelGroup MySqlStorageConnection::insertGroup(const std::string &sGroup) {
+    std::lock_guard<std::mutex> lock(m_mtxConn);
+    ModelGroup gr;
+    std::string sQuery =
+        " INSERT INTO webdiff_file_groups(`name`)"
+        " VALUES(" + this->prepareStringValue(sGroup) + ");";
+    ;
+    // WsjcppLog::info(TAG, sQuery);
+    if (mysql_query(m_pConnection, sQuery.c_str())) {
+        std::string sError(mysql_error(m_pConnection));
+        WsjcppLog::throw_err(TAG, "Problem with database " + sError);
+    } else {
+        // mysql_insert_id()
+        int nLastInsertedId = mysql_insert_id(m_pConnection);
+        MYSQL_RES *pRes = mysql_use_result(m_pConnection);
+        mysql_free_result(pRes);
+        gr.setId(nLastInsertedId);
+        gr.setTitle(sGroup);
+    }
+    return gr;
+}
+
+int MySqlStorageConnection::insertDefineFile(
+    const std::string &sFilepath,
+    const std::string &sFilename,
+    int nParentId
+) {
+    std::lock_guard<std::mutex> lock(m_mtxConn);
+    int nRet = -1;
+    std::string sQuery =
+        " INSERT INTO webdiff_define_files(filepath, `filename`, parent_id)"
+        " VALUES(" + this->prepareStringValue(sFilepath) + ", " + this->prepareStringValue(sFilename) + ", " + std::to_string(nParentId) + ");";
+    ;
+    // WsjcppLog::info(TAG, sQuery);
+    if (mysql_query(m_pConnection, sQuery.c_str())) {
+        std::string sError(mysql_error(m_pConnection));
+        WsjcppLog::throw_err(TAG, "Problem with database " + sError);
+    } else {
+        // mysql_insert_id()
+        nRet = mysql_insert_id(m_pConnection);
+        MYSQL_RES *pRes = mysql_use_result(m_pConnection);
+        mysql_free_result(pRes);
+        // gr.setId(nLastInsertedId);
+        // gr.setTitle(sGroup);
+    }
+    return nRet;
+}
+
+ModelFile MySqlStorageConnection::insertFile(const std::string &sGroup) {
+    ModelFile ret;
+    
+    return ret;
+}
+
 // ----------------------------------------------------------------------
 // MySqlStorageUpdate
 
@@ -564,6 +640,44 @@ ModelVersion MySqlStorage::getVersionInfo(int nVersionId) {
         if (m_vVersions[i].getId() == nVersionId) {
             ret = m_vVersions[i];
         }
+    }
+    return ret;
+}
+
+ModelVersion MySqlStorage::findVersionOrCreate(const std::string &sVersion) {
+    // TODO mutex
+    ModelVersion ret;
+    bool bFound = false;
+    for (int i = 0; i < m_vVersions.size(); i++) {
+        if (m_vVersions[i].getName() == sVersion) {
+            ret = m_vVersions[i];
+            bFound = true;
+            break;
+        }
+    }
+    if (!bFound) {
+        MySqlStorageConnection *pConn = getConnection();
+        ret = pConn->insertVersion(sVersion);
+        m_vVersions.push_back(ret);
+    }
+    return ret;
+}
+
+ModelGroup MySqlStorage::findGroupOrCreate(const std::string &sGroup) {
+    // TODO mutex
+    ModelGroup ret;
+    bool bFound = false;
+    for (int i = 0; i < m_vGroups.size(); i++) {
+        if (m_vGroups[i].getTitle() == sGroup) {
+            ret = m_vGroups[i];
+            bFound = true;
+            break;
+        }
+    }
+    if (!bFound) {
+        MySqlStorageConnection *pConn = getConnection();
+        ret = pConn->insertGroup(sGroup);
+        m_vGroups.push_back(ret);
     }
     return ret;
 }

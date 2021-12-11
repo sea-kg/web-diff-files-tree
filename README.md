@@ -23,7 +23,7 @@ $ docker-compose down
 
 Example add data:
 ```
-curl --header "Content-Type: application/json" \
+curl --header "content-type: application/json" \
   --request POST \
   --data '{"group":"product1", "version":"0.0.1", "files"[{"path": "some/file1", "size": 0, "mode": "-rw-rw-r--", "compress_size": 0, "is_dir": false, "dt": "2021-11-18T21:56:08Z"}]}' \
   http://localhost:8071/api/add/

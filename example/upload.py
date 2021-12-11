@@ -10,7 +10,7 @@ import requests
 import datetime
 
 # BASEURL = "http://localhost:8071/"
-BASEURL = "http://localhost:1234"
+BASEURL = "http://localhost:1234/"
 
 def get_group_and_version(_zip_filename):
     _zip_filename = _zip_filename[:-4] # remove '.zip'
@@ -32,12 +32,16 @@ def remove_first_folder(_file):
 def upload_files(data_request, _uploaded, _all):
     print(" ------- ")
     print("Start adding information. Group: " + data_request['group'] + "; Version: " + data_request['version'])
-    print("Uploading " + str(len(data_request['files'])) + "....")
-    r = requests.post(BASEURL + '/api/add/', json = data_request)
+    print("Adding information about " + str(len(data_request['files'])) + " files ...")
+    r = requests.post(
+        BASEURL + 'api/add/',
+        json=data_request
+    )
     if r.status_code != 200:
-        sys.exit("Could not post " + str(r.status_code ) + r.content)
+        sys.exit("Could not post " + str(r.status_code) + ' ' + str(r.content))
+    print(" " + str(r.json()))
     _uploaded += len(data_request['files'])
-    print("Uploaded " + str(_uploaded) + "/" + str(_all))
+    print("Added " + str(_uploaded) + "/" + str(_all))
     return _uploaded
 
 def getfileinfo(_zip, _reg_file):

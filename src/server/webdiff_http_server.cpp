@@ -59,12 +59,37 @@ int WebdiffHttpServer::httpApiAdd(HttpRequest* req, HttpResponse* resp) {
     resp->content_type = APPLICATION_JSON;
     req->ParseBody();
 
-    // resp->json = req->json;
-    resp->json["req_body"] = req->body;
-    resp->json["req_json"] = req->json;
-    resp->json["int"] = 123;
-    resp->json["float"] = 3.14;
-    resp->json["string"] = "hello";
+    std::string sVersion = req->json["version"];
+    std::string sGroup = req->json["group"];
+    nlohmann::json jsonFiles = req->json["files"];
+
+    ModelVersion ver = m_pStorage->findVersionOrCreate(sVersion);
+    ModelGroup gr = m_pStorage->findGroupOrCreate(sGroup);
+
+    // for (auto it = jsonFiles.begin(); it != jsonFiles.end(); ++it) {
+    //     std::cout << it.key() << "\n";
+    // }
+    
+    std::vector<ModelFile *> vFiles;
+    for (int i = 0; i < jsonFiles.size(); i++) {
+        nlohmann::json jsonFile = jsonFiles.at(i);
+        ModelFile *pFile = new ModelFile();
+        pFile->setGroupId(gr.getId());
+        pFile->setVersionId(ver.getId());
+        pFile->setDefineFileId(-1); // TODO
+        pFile->setTitle("todo"); // TODO
+        pFile->setPath(jsonFile["path"]);
+        pFile->setSize(jsonFile["size"]);
+        pFile->setCompressSize(jsonFile["compress_size"]);
+        pFile->setMode(jsonFile["mode"]);
+        pFile->setIsDir(jsonFile["is_dir"]);
+        pFile->setDatetime(jsonFile["dt"]);
+        vFiles.push_back(pFile);
+    };
+
+    resp->json["jsonrpc"] = "2.0";
+    resp->json["version"] = ver.toJson();
+    resp->json["group"] = gr.toJson();
     resp->json["url"] = req->url;
     return 200;
 }

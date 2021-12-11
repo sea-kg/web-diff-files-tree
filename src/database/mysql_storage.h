@@ -30,6 +30,14 @@ class MySqlStorageConnection {
         void getDiffFiles(int nLeftVersionId, int nRightVersionId, const std::string &sState, ModelDiffGroups &diffGroups);
         ModelComment addComment(int nDefineFileId, const std::string &sComment);
         void hideComment(int nCommentId);
+        ModelVersion insertVersion(const std::string &sVersion);
+        ModelGroup insertGroup(const std::string &sGroup);
+        int insertDefineFile(
+            const std::string &sFilepath,
+            const std::string &sFilename,
+            int nParentId
+        );
+        ModelFile insertFile(const std::string &sGroup);
 
     private:
         std::string prepareStringValue(const std::string &sValue);
@@ -58,6 +66,8 @@ class MySqlStorage {
         bool loadCache();
         const std::vector<ModelVersion> &getVersionsAll();
         ModelVersion getVersionInfo(int nVersionId);
+        ModelVersion findVersionOrCreate(const std::string &sVersion);
+        ModelGroup findGroupOrCreate(const std::string &sGroup);
         const std::vector<ModelGroup> &getGroupsAll();
         std::vector<ModelGroupForVersion> getGroups(int nVersionId);
         std::vector<ModelFile> getFiles(int nVersionId, int nGroupId, int nParentId);

@@ -20,6 +20,10 @@ void ModelVersion::setName(const std::string &sName) {
     m_sName = sName;
 }
 
+const std::string &ModelVersion::getName() {
+    return m_sName;
+}
+
 nlohmann::json ModelVersion::toJson() const {
     nlohmann::json jsonRet;
     jsonRet["version_id"] = m_nId;
@@ -124,6 +128,30 @@ void ModelFile::setAmountOfChildren(int nAmountOfChildren) {
 
 void ModelFile::setTitle(const std::string &sTitle) {
     m_sTitle = sTitle;
+}
+
+void ModelFile::setPath(const std::string &sPath) {
+    m_sPath = sPath;
+}
+
+void ModelFile::setSize(int nSize) {
+    m_nSize = nSize;
+}
+
+void ModelFile::setCompressSize(int nCompressSize) {
+    m_nCompressSize = nCompressSize;
+}
+
+void ModelFile::setMode(const std::string &sMode) {
+    m_sMode = sMode;
+}
+
+void ModelFile::setIsDir(bool bIsDir) {
+    m_bIsDir = bIsDir;
+}
+
+void ModelFile::setDatetime(const std::string &sDatetime) {
+    m_sDatetime = sDatetime;
 }
 
 nlohmann::json ModelFile::toJson() const {

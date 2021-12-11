@@ -10,6 +10,7 @@ class ModelVersion {
         void setId(int nId);
         int getId();
         void setName(const std::string &sName);
+        const std::string &getName();
         nlohmann::json toJson() const;
 
     private:
@@ -60,6 +61,12 @@ class ModelFile {
         void setDefineFileId(int nDefineFileId);
         void setAmountOfChildren(int nAmountOfChildren);
         void setTitle(const std::string &sTitle);
+        void setPath(const std::string &sPath);
+        void setSize(int nSize);
+        void setCompressSize(int nCompressSize);
+        void setMode(const std::string &sMode);
+        void setIsDir(bool bIsDir);
+        void setDatetime(const std::string &sDatetime);
 
         nlohmann::json toJson() const;
 
@@ -71,6 +78,12 @@ class ModelFile {
         int m_nDefineFileId;
         int m_nAmountOfChildren;
         std::string m_sTitle;
-};
+        std::string m_sPath;
+        int m_nSize;
+        int m_nCompressSize;
+        std::string m_sMode;
+        bool m_bIsDir;
+        std::string m_sDatetime;
+};  
 
 #endif // MODELS_BASIC_H

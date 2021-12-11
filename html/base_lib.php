@@ -81,38 +81,6 @@ class BaseLib {
     return BaseLib::$ROLE == 'admin';
   }
 
-  static function createGroupSafe($group) {
-    $conn = BaseLib::dbConn();
-    $stmt_find = $conn->prepare('SELECT id FROM webdiff_file_groups WHERE `name` = ?;');
-    $stmt_find->execute(array($group));
-    $ret = -1;
-    if ($row = $stmt_find->fetch()) {
-      $ret = $row['id'];
-    } else {
-      $stmt_insert = $conn->prepare('INSERT INTO webdiff_file_groups(`name`) VALUES(?);');
-      if ($stmt_insert->execute(array($group))) {
-        $ret =  $conn->lastInsertId();
-      }
-    }
-    return $ret;
-  }
-
-  static function createVersionSafe($ver) {
-    $conn = BaseLib::dbConn();
-    $stmt_find = $conn->prepare('SELECT id FROM webdiff_versions WHERE `name` = ?;');
-    $stmt_find->execute(array($ver));
-    $ret = -1;
-    if ($row = $stmt_find->fetch()) {
-      $ret = $row['id'];
-    } else {
-      $stmt_insert = $conn->prepare('INSERT INTO webdiff_versions(`name`, comment) VALUES(?,?);');
-      if ($stmt_insert->execute(array($ver, $ver))) {
-        $ret =  $conn->lastInsertId();
-      }
-    }
-    return $ret;
-  }
-
   static function createDefineFileSafe($filepath, $filename, $parentid) {
     $conn = BaseLib::dbConn();
     $stmt_find = $conn->prepare('SELECT id FROM webdiff_define_files WHERE filepath = ? AND parent_id = ?;');
