@@ -735,6 +735,12 @@ void MySqlStorage::hideComment(int nCommentId) {
     pConn->hideComment(nCommentId);
 }
 
+void MySqlStorage::addFiles(const std::vector<ModelFile *> &vFiles) {
+    MySqlStorageConnection *pConn = getConnection();
+    // vFiles[0]->setId(111);
+}
+
+
 // ----------------------------------------------------------------------
 // MySqlStorageUpdate_0001
 

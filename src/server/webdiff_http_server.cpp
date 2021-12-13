@@ -87,6 +87,14 @@ int WebdiffHttpServer::httpApiAdd(HttpRequest* req, HttpResponse* resp) {
         vFiles.push_back(pFile);
     };
 
+    m_pStorage->addFiles(vFiles);
+
+    for (int i = 0; i < vFiles.size(); i++) {
+        delete vFiles[i];
+    }
+    vFiles.clear();
+    
+
     resp->json["jsonrpc"] = "2.0";
     resp->json["version"] = ver.toJson();
     resp->json["group"] = gr.toJson();

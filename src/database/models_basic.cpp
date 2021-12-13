@@ -110,20 +110,40 @@ void ModelFile::setId(int nFileId) {
     m_nFileId = nFileId;
 }
 
+int ModelFile::getId() {
+    return m_nFileId;
+}
+
 void ModelFile::setGroupId(int nGroupId) {
     m_nGroupId = nGroupId;
+}
+
+int ModelFile::getGroupId() {
+    return m_nGroupId;
 }
 
 void ModelFile::setVersionId(int nVersionId) {
     m_nVersionId = nVersionId;
 }
 
+int ModelFile::getVersionId() {
+    return m_nVersionId;
+}
+
 void ModelFile::setDefineFileId(int nDefineFileId) {
     m_nDefineFileId = nDefineFileId;
 }
 
+int ModelFile::getDefineFileId() {
+    return m_nDefineFileId;
+}
+
 void ModelFile::setAmountOfChildren(int nAmountOfChildren) {
     m_nAmountOfChildren = nAmountOfChildren;
+}
+
+int ModelFile::getAmountOfChildren() {
+    return m_nAmountOfChildren;
 }
 
 void ModelFile::setTitle(const std::string &sTitle) {

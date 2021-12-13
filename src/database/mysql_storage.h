@@ -74,6 +74,7 @@ class MySqlStorage {
         void getDiff(int nLeftVersionId, int nRightVersionId, ModelDiffGroups &groups);
         ModelComment addComment(int nDefineFileId, const std::string &sComment);
         void hideComment(int nCommentId);
+        void addFiles(const std::vector<ModelFile *> &vFiles);
 
     private:
         MySqlStorageConnection *connect();

@@ -56,10 +56,15 @@ class ModelFile {
     public:
         ModelFile();
         void setId(int nFileId);
+        int getId();
         void setGroupId(int nGroupId);
+        int getGroupId();
         void setVersionId(int nVersionId);
+        int getVersionId();
         void setDefineFileId(int nDefineFileId);
+        int getDefineFileId();
         void setAmountOfChildren(int nAmountOfChildren);
+        int getAmountOfChildren();
         void setTitle(const std::string &sTitle);
         void setPath(const std::string &sPath);
         void setSize(int nSize);
