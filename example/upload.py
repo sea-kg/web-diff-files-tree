@@ -29,10 +29,10 @@ def remove_first_folder(_file):
     _file = _file[1:]
     return "/".join(_file)
 
-def upload_files(data_request, _uploaded, _all):
+def upload_files(data_request, _uploaded, _all, _all_expected):
     print(" ------- ")
     print("Start adding information. Group: " + data_request['group'] + "; Version: " + data_request['version'])
-    print("Adding information about " + str(len(data_request['files'])) + " files ...")
+    print("Adding information about " + str(len(data_request['files'])) + "/" + str(_all_expected) + " files ...")
     r = requests.post(
         BASEURL + 'api/add/',
         json=data_request
@@ -98,13 +98,14 @@ for _zip_filename in files:
     _uploaded = 0
     print(" ------- ")
     print("Start adding information. Group: " + data_request['group'] + "; Version: " + data_request['version'])
+    all_expected = len(reg_files)
     for _reg_file in reg_files:
         data_request['files'].append(getfileinfo(_zip, _reg_file))
         if len(data_request['files']) > 499:
-            _uploaded = upload_files(data_request, _uploaded, _all)
+            _uploaded = upload_files(data_request, _uploaded, _all, all_expected)
             data_request['files'] = []
     if len(data_request['files']) > 0:
-        _uploaded = upload_files(data_request, _uploaded, _all)
+        _uploaded = upload_files(data_request, _uploaded, _all, all_expected)
         _uploaded += len(data_request['files'])
         data_request['files'] = []
     print("Done.")

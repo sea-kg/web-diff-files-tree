@@ -7,6 +7,7 @@
 #include <vector>
 #include "models_basic.h"
 #include "models_diff.h"
+#include "models_cache.h"
 
 class MySqlStorage;
 
@@ -37,7 +38,10 @@ class MySqlStorageConnection {
             const std::string &sFilename,
             int nParentId
         );
-        ModelFile insertFile(const std::string &sGroup);
+        
+        void getDefineFilesCache(std::unordered_map<std::string, int> &mapCache);
+        void loadFilesIds(ModelCacheFilesVersion &cache);
+        int insertFile(int nVersionId, int nGroupId, int nDefineFileId, int nFileParentId);
 
     private:
         std::string prepareStringValue(const std::string &sValue);
@@ -68,17 +72,29 @@ class MySqlStorage {
         ModelVersion getVersionInfo(int nVersionId);
         ModelVersion findVersionOrCreate(const std::string &sVersion);
         ModelGroup findGroupOrCreate(const std::string &sGroup);
+        int findDefineFileIdOrCreate(const std::string &sFilePath, const std::string &sFileName, int nDefineFileId);
+        int findFileOrCreate(int nVersionId, int nGroupId, int nDefineFileId, int nFileParentId);
+
         const std::vector<ModelGroup> &getGroupsAll();
         std::vector<ModelGroupForVersion> getGroups(int nVersionId);
         std::vector<ModelFile> getFiles(int nVersionId, int nGroupId, int nParentId);
         void getDiff(int nLeftVersionId, int nRightVersionId, ModelDiffGroups &groups);
         ModelComment addComment(int nDefineFileId, const std::string &sComment);
         void hideComment(int nCommentId);
-        void addFiles(const std::vector<ModelFile *> &vFiles);
+        void addFile(
+            int nGroupId,
+            int nVersionId,
+            const std::string &sFilePath,
+            int nFileSize,
+            int nCompressSize,
+            const std::string &sMode,
+            bool bIsDir,
+            const std::string &sDateTime
+        );
 
     private:
         MySqlStorageConnection *connect();
-
+        
         std::string TAG;
         std::string m_sDatabaseHost;
         std::string m_sDatabaseName;
@@ -95,6 +111,10 @@ class MySqlStorage {
         // caches
         std::vector<ModelVersion> m_vVersions;
         std::vector<ModelGroup> m_vGroups;
+        std::unordered_map<std::string, int> m_mapCacheFileDefinsIds;
+        std::unordered_map<std::string, int> m_mapToUpdateFiles;
+        ModelCacheFilesVersion m_cacheGroups;
+        
 
         // updates
         std::vector<MySqlStorageUpdate *> m_vDatabaseUpdates;

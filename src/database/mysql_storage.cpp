@@ -478,10 +478,104 @@ int MySqlStorageConnection::insertDefineFile(
     return nRet;
 }
 
-ModelFile MySqlStorageConnection::insertFile(const std::string &sGroup) {
-    ModelFile ret;
-    
-    return ret;
+void MySqlStorageConnection::getDefineFilesCache(std::unordered_map<std::string, int> &mapCache) {
+    std::lock_guard<std::mutex> lock(m_mtxConn);
+    std::string sQuery =
+        " SELECT id, filepath FROM webdiff_define_files;"
+    ;
+    // WsjcppLog::info(TAG, sQuery);
+    if (mysql_query(m_pConnection, sQuery.c_str())) {
+        std::string sError(mysql_error(m_pConnection));
+        WsjcppLog::throw_err(TAG, "Problem with database " + sError);
+    } else {
+        MYSQL_RES *pRes = mysql_use_result(m_pConnection);
+        MYSQL_ROW row;
+        int nCount = 0;
+        // output table name
+        WsjcppLog::info(TAG, "Loading cache define files ids...");
+        while ((row = mysql_fetch_row(pRes)) != NULL) {
+            int nDefineFileId = paramtoInt(row[0]);
+            std::string sFilePath = std::string(row[1]);
+            mapCache[sFilePath] = nDefineFileId;
+            nCount++;
+        }
+        WsjcppLog::info(TAG, "Loaded " + std::to_string(nCount) + " records");
+        mysql_free_result(pRes);
+    }
+}
+
+void MySqlStorageConnection::loadFilesIds(ModelCacheFilesVersion &cache) {
+    std::lock_guard<std::mutex> lock(m_mtxConn);
+    std::string sQuery =
+        " SELECT id, version_id, define_file_id, file_group_id FROM webdiff_files;"
+    ;
+    // WsjcppLog::info(TAG, sQuery);
+    if (mysql_query(m_pConnection, sQuery.c_str())) {
+        std::string sError(mysql_error(m_pConnection));
+        WsjcppLog::throw_err(TAG, "Problem with database " + sError);
+    } else {
+        MYSQL_RES *pRes = mysql_use_result(m_pConnection);
+        MYSQL_ROW row;
+        int nCount = 0;
+        // output table name
+        WsjcppLog::info(TAG, "Loading cache files ids...");
+        while ((row = mysql_fetch_row(pRes)) != NULL) {
+            int nFileId = paramtoInt(row[0]);
+            int nVersionId = paramtoInt(row[1]);
+            int nDefineFileId = paramtoInt(row[2]);
+            int nGroupId = paramtoInt(row[3]);
+            cache.add(nVersionId, nGroupId, nDefineFileId, nFileId);
+            nCount++;
+        }
+        WsjcppLog::info(TAG, "Loaded " + std::to_string(nCount) + " records");
+        mysql_free_result(pRes);
+    }
+}
+
+int MySqlStorageConnection::insertFile(int nVersionId, int nGroupId, int nDefineFileId, int nFileParentId) {
+    std::lock_guard<std::mutex> lock(m_mtxConn);
+    int nRet = -1;
+    std::string sQuery =
+        " INSERT INTO webdiff_files(version_id, file_group_id, define_file_id,  parent_id)"
+        " VALUES(" + std::to_string(nVersionId) + "," + std::to_string(nGroupId) + "," + std::to_string(nDefineFileId) + "," + std::to_string(nFileParentId) + ");"
+    ;
+    if (mysql_query(m_pConnection, sQuery.c_str())) {
+        std::string sError(mysql_error(m_pConnection));
+        WsjcppLog::throw_err(TAG, "Problem with database " + sError);
+    } else {
+        nRet = mysql_insert_id(m_pConnection);
+        MYSQL_RES *pRes = mysql_use_result(m_pConnection);
+        mysql_free_result(pRes);
+    }
+
+    // update amnount of childs
+    int nAmountOfChildren = 0;
+    std::string sQuery2 =
+        " SELECT COUNT(id) as cnt FROM webdiff_files WHERE parent_id = " + std::to_string(nFileParentId) + ";"
+    ;
+    if (mysql_query(m_pConnection, sQuery2.c_str())) {
+        std::string sError(mysql_error(m_pConnection));
+        WsjcppLog::throw_err(TAG, "Problem with database " + sError);
+    } else {
+        MYSQL_RES *pRes = mysql_use_result(m_pConnection);
+        MYSQL_ROW row;
+        if ((row = mysql_fetch_row(pRes)) != NULL) {
+            nAmountOfChildren = paramtoInt(row[0]);
+        }
+        mysql_free_result(pRes);
+    }
+
+    std::string sQuery3 =
+        " UPDATE webdiff_files SET amount_of_children = " + std::to_string(nAmountOfChildren) + " WHERE id = " + std::to_string(nFileParentId) + ";"
+    ;
+    if (mysql_query(m_pConnection, sQuery3.c_str())) {
+        std::string sError(mysql_error(m_pConnection));
+        WsjcppLog::throw_err(TAG, "Problem with database " + sError);
+    } else {
+        MYSQL_RES *pRes = mysql_use_result(m_pConnection);
+        mysql_free_result(pRes);
+    }
+    return nRet;
 }
 
 // ----------------------------------------------------------------------
@@ -626,6 +720,8 @@ bool MySqlStorage::loadCache() {
     MySqlStorageConnection *pConn = getConnection();
     m_vVersions = pConn->getApiVersionsAll();
     m_vGroups = pConn->getGroupsAll();
+    pConn->getDefineFilesCache(m_mapCacheFileDefinsIds);
+    pConn->loadFilesIds(m_cacheGroups);
     return true;
 }
 
@@ -682,6 +778,31 @@ ModelGroup MySqlStorage::findGroupOrCreate(const std::string &sGroup) {
     return ret;
 }
 
+int MySqlStorage::findDefineFileIdOrCreate(const std::string &sFilePath, const std::string &sFileName, int nDefineFileId) {
+    int nNewDefineFileId = -1;
+    std::unordered_map<std::string, int>::iterator it;
+    it = m_mapCacheFileDefinsIds.find(sFilePath);
+    if (it == m_mapCacheFileDefinsIds.end()) {
+        MySqlStorageConnection *pConn = getConnection();
+        nNewDefineFileId = pConn->insertDefineFile(sFilePath, sFileName, nDefineFileId);
+        m_mapCacheFileDefinsIds[sFilePath] = nNewDefineFileId;
+    } else {
+        nNewDefineFileId = it->second;
+    }
+    return nNewDefineFileId;
+}
+
+int MySqlStorage::findFileOrCreate(int nVersionId, int nGroupId, int nDefineFileId, int nFileParentId) {
+    MySqlStorageConnection *pConn = getConnection();
+    int nFileId = m_cacheGroups.findFileId(nVersionId, nGroupId, nDefineFileId);
+    if (nFileId != -1) {
+        return nFileId;
+    }
+    nFileId = pConn->insertFile(nVersionId, nGroupId, nDefineFileId, nFileParentId);
+    m_cacheGroups.add(nVersionId, nGroupId, nDefineFileId, nFileId);
+    return nFileId;
+}
+
 const std::vector<ModelGroup> &MySqlStorage::getGroupsAll() {
     // from cache
     return m_vGroups;
@@ -735,11 +856,37 @@ void MySqlStorage::hideComment(int nCommentId) {
     pConn->hideComment(nCommentId);
 }
 
-void MySqlStorage::addFiles(const std::vector<ModelFile *> &vFiles) {
-    MySqlStorageConnection *pConn = getConnection();
-    // vFiles[0]->setId(111);
-}
+void MySqlStorage::addFile(
+    int nVersionId,
+    int nGroupId,
+    const std::string &sFilePath,
+    int nFileSize,
+    int nCompressSize,
+    const std::string &sMode,
+    bool bIsDir,
+    const std::string &sDateTime
+) {
+    if (sFilePath == "" || sFilePath == "/") {
+        return;
+    }
+    std::string sPath = WsjcppCore::doNormalizePath(sFilePath);
+    std::vector<std::string> vPath = WsjcppCore::split(sPath, "/");
+    int nDefineFileId = 0;
+    int nFileParentId = 0;
 
+    std::string sNewFilePath = "";
+    for (int i = 0; i < vPath.size(); i++) {
+        if (vPath[i] == "") {
+            continue;
+        }
+        sNewFilePath += "/" + vPath[i];
+        nDefineFileId = this->findDefineFileIdOrCreate(sNewFilePath, vPath[i], nDefineFileId);
+        nFileParentId = this->findFileOrCreate(nVersionId, nGroupId, nDefineFileId, nFileParentId);
+        // m_mapToUpdateFiles[nFileParentId] - recalculate size, and etc 
+    }
+    // nFileParentId
+    // TODO update compress size and etc
+}
 
 // ----------------------------------------------------------------------
 // MySqlStorageUpdate_0001

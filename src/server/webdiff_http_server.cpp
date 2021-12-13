@@ -74,26 +74,27 @@ int WebdiffHttpServer::httpApiAdd(HttpRequest* req, HttpResponse* resp) {
     for (int i = 0; i < jsonFiles.size(); i++) {
         nlohmann::json jsonFile = jsonFiles.at(i);
         ModelFile *pFile = new ModelFile();
-        pFile->setGroupId(gr.getId());
-        pFile->setVersionId(ver.getId());
-        pFile->setDefineFileId(-1); // TODO
-        pFile->setTitle("todo"); // TODO
-        pFile->setPath(jsonFile["path"]);
-        pFile->setSize(jsonFile["size"]);
-        pFile->setCompressSize(jsonFile["compress_size"]);
-        pFile->setMode(jsonFile["mode"]);
-        pFile->setIsDir(jsonFile["is_dir"]);
-        pFile->setDatetime(jsonFile["dt"]);
-        vFiles.push_back(pFile);
+        int nGroupId = gr.getId();
+        int nVersionId = ver.getId();
+
+        std::string sFilePath = jsonFile["path"];
+        int nFileSize = jsonFile["size"];
+        int nCompressSize = jsonFile["compress_size"];
+        std::string sMode = jsonFile["mode"];
+        bool bIsDir = jsonFile["is_dir"];
+        std::string sDateTime = jsonFile["dt"];
+        m_pStorage->addFile(
+            nVersionId,
+            nGroupId,
+            sFilePath,
+            nFileSize,
+            nCompressSize,
+            sMode,
+            bIsDir,
+            sDateTime
+        );
     };
-
-    m_pStorage->addFiles(vFiles);
-
-    for (int i = 0; i < vFiles.size(); i++) {
-        delete vFiles[i];
-    }
-    vFiles.clear();
-    
+   
 
     resp->json["jsonrpc"] = "2.0";
     resp->json["version"] = ver.toJson();
