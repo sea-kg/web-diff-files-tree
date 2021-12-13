@@ -5,6 +5,7 @@ After this you can compare different `version` and set comment to files.
 
 ![screen](screen.jpg)
 
+[docker](https://hub.docker.com/r/sea5kg/web-diff-files-tree)
 
 ## Fast start (via docker-compose)
 
