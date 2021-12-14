@@ -1,5 +1,7 @@
 # web-diff-files-tree
 
+[![Docker Pulls](https://img.shields.io/docker/pulls/sea5kg/web-diff-files-tree.svg)](https://hub.docker.com/r/sea5kg/web-diff-files-tree/) [![Total alerts](https://img.shields.io/lgtm/alerts/g/sea-kg/web-diff-files-tree.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/sea-kg/web-diff-files-tree/alerts/) [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/sea-kg/web-diff-files-tree.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/sea-kg/web-diff-files-tree/context:python) [![Language grade: Python](https://img.shields.io/lgtm/grade/cpp/g/sea-kg/web-diff-files-tree.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/sea-kg/web-diff-files-tree/context:cpp) [![Language grade: JavaScript](https://img.shields.io/lgtm/grade/javascript/g/sea-kg/web-diff-files-tree.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/sea-kg/web-diff-files-tree/context:javascript)
+
 Service which allowed loading filepaths by api. 
 After this you can compare different `version` and set comment to files.
 
