@@ -159,15 +159,16 @@ body {
                 + '  <div class="wdft-table-col left ' + fileinfo['state'] + '" ' + padding + '>'
                 + icon
                 + '    <img width=25px height=25px src="./images/' + img_name + '">' + fileinfo['filename'] + ' '
-                + '    <div class="comment-add" define_file_id="' + define_file_id + '" ></div>'
                 + content_comments
                 + '  </div>'
                 + '  <div class="wdft-table-col mid">' + fileinfo['state'] + '</div>'
                 + '  <div class="wdft-table-col right ' + fileinfo['state'] + ' " ' + padding + '>'
                 + icon
                 + '    <img width=25px height=25px src="./images/' + img_name + '">' + fileinfo['filename'] + ' '
-                + '    <div class="comment-add" define_file_id="' + define_file_id + '" ></div>'
                 + content_comments
+                + '  </div>'
+                + '  <div class="wdft-table-col actions">'
+                + '    <div class="comment-add" define_file_id="' + define_file_id + '" ></div>'
                 + '  </div>'
                 + '</div>'
               ;
@@ -194,9 +195,10 @@ body {
             var groups = result['groups'];
             $('#diff_content').html(''
               + '<div class="wdft-table-row info-block">'
-              + '  <div class="wdft-table-col big title info-block left">Version: ' + result['left_version']['name'] + '</div>'
+              + '  <div class="wdft-table-col info-block left title">Version: ' + result['left_version']['name'] + '</div>'
               + '  <div class="wdft-table-col info-block mid"></div>'
-              + '  <div class="wdft-table-col big title info-block right">Version: ' + result['right_version']['name'] + '</div>'
+              + '  <div class="wdft-table-col info-block right title">Version: ' + result['right_version']['name'] + '</div>'
+              + '  <div class="wdft-table-col info-block actions"></div>'
               + '</div>'
             );
 
@@ -207,24 +209,22 @@ body {
               content.append(''
                 + '<div class="wdft-table-row" toggleid="' + _elid + '">'
                 + '  <div class="treeitem wdft-table-col left underline">'
-                + '    <div class="treeitemname">'
                 + '      <div class="itemfiles plus opened" toggleid="' + _elid + '"></div>'
                 + '      <img width=25px height=25px src="./images/group.png">' + group['title'] + ' '
-                + '    </div>'
                 + '  </div>'
                 + '  <div class="wdft-table-col mid underline">new: ' + group['new']  + '<br>missing: ' + group['missing'] + '</div>'
                 + '  <div class="treeitem wdft-table-col right underline">'
-                + '    <div class="treeitemname">'
                 + '      <div class="itemfiles plus opened" toggleid="' + _elid + '"></div>'
                 + '      <img width=25px height=25px src="./images/group.png">' + group['title'] + ' '
-                + '    </div>'
                 + '  </div>'
+                + '  <div class="wdft-table-col actions underline"></div>'
                 + '</div>'
                 + createsubtree(group['files'], _elid, 'id0', result['left_version'], result['right_version'])
                 + '<div class="wdft-table-row">'
                 + '  <div class="wdft-table-col divider-block left"></div>'
                 + '  <div class="wdft-table-col divider-block mid"></div>'
                 + '  <div class="wdft-table-col divider-block right"></div>'
+                + '  <div class="wdft-table-col divider-block actions"></div>'
                 + '</div>'
               );
             }
