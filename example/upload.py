@@ -29,19 +29,19 @@ def remove_first_folder(_file):
     _file = _file[1:]
     return "/".join(_file)
 
-def upload_files(data_request, _uploaded, _all, _all_expected):
+def upload_files(data_request, _uploaded, _all, _loaded, _all_expected):
     print(" ------- ")
     print("Start adding information. Group: " + data_request['group'] + "; Version: " + data_request['version'])
-    print("Adding information about " + str(len(data_request['files'])) + "/" + str(_all_expected) + " files ...")
+    print("Adding information about " + str(len(data_request['files'])) + " files ... (done: " + str(_loaded) + "/" + str(_all_expected) + ")")
     r = requests.post(
         BASEURL + 'api/add/',
         json=data_request
     )
     if r.status_code != 200:
         sys.exit("Could not post " + str(r.status_code) + ' ' + str(r.content))
-    print(" " + str(r.json()))
+    # print(" " + str(r.json()))
     _uploaded += len(data_request['files'])
-    print("Added " + str(_uploaded) + "/" + str(_all))
+    print("Added " + str(_uploaded) + "/" + str(_all_expected))
     return _uploaded
 
 def getfileinfo(_zip, _reg_file):
@@ -61,7 +61,7 @@ def getfileinfo(_zip, _reg_file):
         fi.date_time[5]
     )
     ret["dt"] = dt.strftime("%Y-%m-%dT%H:%M:%SZ")
-    print(ret)
+    # print(ret)
     return ret
 
 files = os.listdir(".")
@@ -96,16 +96,19 @@ for _zip_filename in files:
 
     _all = len(reg_files)
     _uploaded = 0
+    _loaded = 0
     print(" ------- ")
     print("Start adding information. Group: " + data_request['group'] + "; Version: " + data_request['version'])
     all_expected = len(reg_files)
     for _reg_file in reg_files:
         data_request['files'].append(getfileinfo(_zip, _reg_file))
         if len(data_request['files']) > 499:
-            _uploaded = upload_files(data_request, _uploaded, _all, all_expected)
+            _uploaded = upload_files(data_request, _uploaded, _all, _loaded, all_expected)
+            _loaded += len(data_request['files'])
             data_request['files'] = []
     if len(data_request['files']) > 0:
-        _uploaded = upload_files(data_request, _uploaded, _all, all_expected)
+        _uploaded = upload_files(data_request, _uploaded, _all, _loaded, all_expected)
+        _loaded += len(data_request['files'])
         _uploaded += len(data_request['files'])
         data_request['files'] = []
     print("Done.")
