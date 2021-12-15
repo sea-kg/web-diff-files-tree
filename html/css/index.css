@@ -4,9 +4,6 @@
     padding-left: 10px;
 }
 
-.treeitemname {
-    background-color: #ffffff;
-}
 
 .treeitemname:hover {
     background-color: #f0f0f0;
@@ -124,4 +121,95 @@
     content: " ";
     vertical-align: top;
     margin-left: 10px;
+}
+
+.wdft-table {
+    display: table;
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 10px;
+    border-right: 1px solid black;
+    border-left: 1px solid black;
+    border-radius: 1px;
+    margin-bottom: 20px;
+}
+
+.wdft-table-row {
+    display: table-row;
+}
+
+.wdft-table-row:hover {
+    background-color: #f0f0f0;
+}
+
+.wdft-table-col {
+    display: table-cell;
+    padding-left: 5px;
+    height: 100%;
+    white-space: nowrap;
+    margin: 0;
+}
+
+.wdft-table-col.title {
+    font-weight: 500;
+    font-size: 2.5rem;
+}
+
+.wdft-table-col.left, .wdft-table-col.right {
+    width:     calc(50% - 50px);
+    min-width: calc(50% - 50px);
+    max-width: calc(50% - 50px);    
+}
+
+.wdft-table-col.mid {
+    background-color: #e8f1f1;
+    width:     100px;
+    min-width: 100px;
+    max-width: 100px;
+    border-left: 1px solid #a1c8c8;
+    border-right: 1px solid #a1c8c8;
+    color: #136c6c;
+}
+
+.wdft-table-col.underline {
+    border-bottom: 1px solid #a1c8c8;
+}
+
+.wdft-table-col.info-block {
+    border-top: 1px solid black;
+    border-bottom: 1px solid black;
+    border-radius: 2px;
+}
+
+.wdft-table-col.info-block.left {
+    border-left: 1px solid black;
+}
+
+.wdft-table-col.info-block.mid {
+    border-top: 1px solid black;
+    border-bottom: 1px solid black;
+    border-radius: 2px;
+}
+
+.wdft-table-col.info-block.right {
+    padding-left: 5px;
+    border-top: 1px solid black;
+    border-bottom: 1px solid black;
+    border-right: 1px solid black;
+    border-radius: 2px;
+}
+
+.wdft-table-col.divider-block {
+    background-color: black;
+    height: 1px;
+}
+
+.wdft-table-col.left.new, .wdft-table-col.right.missing {
+    text-decoration: line-through;
+    color: gray;
+}
+
+.wdft-table-col.left.missing, .wdft-table-col.right.new {
+    color: #4d6206;
+    font-weight: bold;
 }
