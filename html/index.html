@@ -58,7 +58,7 @@ body {
         <input type="hidden" name="right_version" value="-1"/>
         <button class="btn btn-primary" type="submit">Other comparation</button>
       </form>
-      <div id="diff_content">
+      <div class="wdft-table" id="diff_content">
       </div>
     </div>
   </div>
@@ -68,12 +68,15 @@ body {
           // expand files
           $('.itemfiles').unbind('click').bind('click', function(el) {
             var elid = $(this).attr('toggleid');
-            var subel = $('#' + elid);
+            var subel = $('.' + elid);
+            var duplocates = $('.itemfiles[toggleid=' + elid + ']');
             if ($(this).hasClass("opened")) {
               $(this).removeClass("opened");
+              duplocates.removeClass("opened");
               subel.hide();
             } else {
               $(this).addClass("opened");
+              duplocates.addClass("opened");
               subel.show();
             }
           })
@@ -120,50 +123,55 @@ body {
           })
         }
 
-        function createsubtree(files, startid, left_version, right_version) {
+        function createsubtree(files, previds, startid, left_version, right_version) {
           var _subhtml = '';
+          var padding = previds.split(' ').length;
+          padding = 'style="padding-left: ' + (padding*25) + 'px"';
           for (var fid in files) {
             var fileinfo = files[fid];
             if (fileinfo['parent'] == startid) {
+              var _elid = 'file_' + fid;
               var amount_of_children = fileinfo['amount_of_children'];
               var define_file_id = fileinfo['define_file_id'];
               var img_name = amount_of_children > 0 ? 'directory.png' : 'file.png';
-              
-              var _elid = 'file_' + fid;
-              _subhtml += '<div class="treeitem">';
-              _subhtml += '<div class="treeitemname">';
+              var icon = '';
               if (amount_of_children > 0) {
-                _subhtml += '<div class="itemfiles plus opened" toggleid="' + _elid + '"></div>';  
+                icon = '<div class="itemfiles plus opened " toggleid="' + _elid + '"></div>';  
               } else {
-                _subhtml += '<div class="subfile"></div>';  
+                icon += '<div class="subfile"></div>';  
               }
-              _subhtml += '<img width=25px height=25px src="./images/' + img_name + '">' + fileinfo['filename'];
-              if (fileinfo['state'] == 'new') {
-                _subhtml += '<div class="state new">NEW in ' + right_version['name'] + ', but not found in ' + left_version['name'] + ' </div>';
-                _subhtml += '<div class="comment-add" define_file_id="' + define_file_id + '" ></div>'
-                // _subhtml += '<div class="file-check" file_id="' + fid + '" ></div>'
-              } else if (fileinfo['state'] == 'missing') {
-                _subhtml += '<div class="state missing">MISSING in ' + right_version['name'] + ', but exists in ' + left_version['name'] + ' </div>';
-                _subhtml += '<div class="comment-add" define_file_id="' + define_file_id + '" ></div>'
-                // _subhtml += '<div class="file-check" file_id="' + fid + '" ></div>'
-              }
-              _subhtml += '<div class="comments" define_file_id="' + define_file_id + '">';
+              var content_comments = '<div class="comments" define_file_id="' + define_file_id + '">';
               var dfid = "dfid" + define_file_id;
               if (document.diff_result['comments'] && document.diff_result['comments'][dfid]) {
                 var comments = document.diff_result['comments'][dfid];
                 for (var cm in comments) {
                   cm = comments[cm];
-                  _subhtml += '<div class="comment" comment_id="' + cm['id'] + '">'
+                  content_comments += '<div class="comment" comment_id="' + cm['id'] + '">'
                     + '<div class="comment-text">(c#' + cm['id'] + ') ' + cm['comment'] + '</div>'
                     + '<div class="comment-hide" comment_id="' + cm['id'] + '"></div>'
                     + '</div>';
                 }
               }
-              _subhtml += '</div>';
+              content_comments += '</div>';
 
-              _subhtml += '</div>';
-              _subhtml += '<div class="subtree" id="' + _elid + '">' + createsubtree(files, fid, left_version, right_version) + '</div>';
-              _subhtml += '</div>';
+              _subhtml += ''
+                + '<div class="wdft-table-row ' + previds + '">'
+                + '  <div class="wdft-table-col left ' + fileinfo['state'] + '" ' + padding + '>'
+                + icon
+                + '    <img width=25px height=25px src="./images/' + img_name + '">' + fileinfo['filename'] + ' '
+                + '    <div class="comment-add" define_file_id="' + define_file_id + '" ></div>'
+                + content_comments
+                + '  </div>'
+                + '  <div class="wdft-table-col mid">' + fileinfo['state'] + '</div>'
+                + '  <div class="wdft-table-col right ' + fileinfo['state'] + ' " ' + padding + '>'
+                + icon
+                + '    <img width=25px height=25px src="./images/' + img_name + '">' + fileinfo['filename'] + ' '
+                + '    <div class="comment-add" define_file_id="' + define_file_id + '" ></div>'
+                + content_comments
+                + '  </div>'
+                + '</div>'
+              ;
+              _subhtml += createsubtree(files, previds + ' ' + _elid, fid, left_version, right_version);
             }
           }
           return _subhtml
@@ -178,20 +186,45 @@ body {
           }).done(function(result) {
             result = result['result']
             document.diff_result = result;
-            console.log(result);
+            console.log("loadDiff, result = ", result);
+
+            $('#left_version_title').html("Version: " + result['left_version']['name']);
+            $('#right_version_title').html("Version: " +result['right_version']['name']);
+
             var groups = result['groups'];
+            $('#diff_content').html(''
+              + '<div class="wdft-table-row info-block">'
+              + '  <div class="wdft-table-col big title info-block left">Version: ' + result['left_version']['name'] + '</div>'
+              + '  <div class="wdft-table-col info-block mid"></div>'
+              + '  <div class="wdft-table-col big title info-block right">Version: ' + result['right_version']['name'] + '</div>'
+              + '</div>'
+            );
+
             var content = $('#diff_content');
-            content.append('<h1>Result of comparation</h1>');
             for (var groupid in groups) {
               var _elid = 'group' + groupid;
               var group = groups[groupid];
               content.append(''
-                + '<div class="treeitem">'
-                + '<div class="treeitemname">'
-                + '<div class="itemfiles plus opened" toggleid="' + _elid + '"></div>'
-                + '<img width=25px height=25px src="./images/group.png">' + group['title'] + ' (new files: ' + group['new']  + ', missing files: ' + group['missing'] + ')'
+                + '<div class="wdft-table-row" toggleid="' + _elid + '">'
+                + '  <div class="treeitem wdft-table-col left underline">'
+                + '    <div class="treeitemname">'
+                + '      <div class="itemfiles plus opened" toggleid="' + _elid + '"></div>'
+                + '      <img width=25px height=25px src="./images/group.png">' + group['title'] + ' '
+                + '    </div>'
+                + '  </div>'
+                + '  <div class="wdft-table-col mid underline">new: ' + group['new']  + '<br>missing: ' + group['missing'] + '</div>'
+                + '  <div class="treeitem wdft-table-col right underline">'
+                + '    <div class="treeitemname">'
+                + '      <div class="itemfiles plus opened" toggleid="' + _elid + '"></div>'
+                + '      <img width=25px height=25px src="./images/group.png">' + group['title'] + ' '
+                + '    </div>'
+                + '  </div>'
                 + '</div>'
-                + '<div class="subtree" id="' + _elid + '">' + createsubtree(group['files'], 'id0', result['left_version'], result['right_version']) + '</div>'
+                + createsubtree(group['files'], _elid, 'id0', result['left_version'], result['right_version'])
+                + '<div class="wdft-table-row">'
+                + '  <div class="wdft-table-col divider-block left"></div>'
+                + '  <div class="wdft-table-col divider-block mid"></div>'
+                + '  <div class="wdft-table-col divider-block right"></div>'
                 + '</div>'
               );
             }
@@ -205,7 +238,7 @@ body {
         left_version_id = parseInt(left_version_id) || -1;
         var right_version_id = pageParams['right_version'];
         right_version_id = parseInt(right_version_id) || -1;
-      
+
         console.log("left_version_id", left_version_id)
         console.log("right_version_id", right_version_id)
 
@@ -219,7 +252,6 @@ body {
             console.log(error);
           }).done(function(result) {
             var _subhtml = '';
-            $('#select_left_version').html('')
             for(var i in result['result']['list']) {
               var item = result['result']['list'][i];
               $('#select_left_version').append(
