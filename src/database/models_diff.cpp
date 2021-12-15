@@ -89,6 +89,10 @@ ModelDiffGroup::ModelDiffGroup(const ModelGroup &group) {
     m_nMissingFiles = 0;
 }
 
+int ModelDiffGroup::size() const {
+    return m_vFileDiffs.size();
+}
+
 void ModelDiffGroup::addDiffFile(const ModelDiffFile &fileDiff) {
     m_vFileDiffs.push_back(fileDiff);
     m_vFilesIds.push_back(fileDiff.getId());
@@ -159,6 +163,22 @@ nlohmann::json ModelComment::toJson() const {
 // ModelDiffGroups
 
 ModelDiffGroups::ModelDiffGroups() {
+}
+
+int ModelDiffGroups::getFilesLength() const {
+    int nRet = 0;
+    for (auto it = m_mapGroups.begin(); it != m_mapGroups.end(); ++it) {
+        nRet += it->second.size();
+    }
+    return nRet;
+}
+
+int ModelDiffGroups::getCommentsLength() const {
+    int nRet = 0;
+    for (auto it = m_mapComments.begin(); it != m_mapComments.end(); ++it) {
+        nRet += it->second.size();
+    }
+    return nRet;
 }
 
 void ModelDiffGroups::addDiffFile(
