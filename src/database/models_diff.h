@@ -39,6 +39,7 @@ class ModelDiffGroup {
     public:
         ModelDiffGroup();
         ModelDiffGroup(const ModelGroup &group);
+        int size() const;
         void addDiffFile(const ModelDiffFile &fileDiff);
         const ModelGroup &getGroup() const;
         const std::vector<int> &getParentFilesIds() const;
@@ -78,6 +79,8 @@ class ModelDiffGroups {
             const ModelGroup &group,
             const ModelDiffFile &fileDiff
         );
+        int getFilesLength() const;
+        int getCommentsLength() const;
         const std::map<int, ModelDiffGroup> &getGroups();
         const std::vector<int> &getFilesDefinesIds() const;
         void setComments(int nDefineFileId, std::vector<ModelComment> vComments);
