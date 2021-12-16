@@ -37,28 +37,25 @@
             </ul>
           </div>
         </nav>
-      <div class="container">
-      <h1>Registered file groups</h1>
-      <div id="groups"></div>
-      </div>
-      <script>
-        $('#groups').html('');
-        api.groups_all().fail(function(error) {
-          console.log(error);
-        }).done(function(result) {
-          var _subhtml = '';
-          for(var i in result['result']['list']) {
-            var item = result['result']['list'][i];
-            $('#groups').append(''
-              + '<br><div class="card">'
-              + '  <div class="card-body">'
-              + '    <h5 class="card-title">#' + item['group_id'] + ' ' + item['name'] + '</h5>'
-              + '    <h6 class="card-subtitle mb-2 text-muted"></h6>'
-              + '  </div>'
-              + '</div>'
-            )
-          }
-        })
-      </script>
-  </body>
+  <br>
+  <div class="container">
+    <h3>Example for add files: </h3>
+    <pre class="replace-host">
+$ curl --header "content-type: application/json" \
+  --request POST \
+  --data '{"group":"product1", "version":"0.0.1", "files"[{"path": "some/file1", "size": 0, "mode": "-rw-rw-r--", "compress_size": 0, "is_dir": false, "dt": "2021-11-18T21:56:08Z"}]}' \
+  http://HOST/api/add/
+    </pre>
+  </div>
+  <script>
+    var els = $('.replace-host');
+    for (var i = 0; i < els.length; i++) {
+      console.log(i)
+      var _el = $(els[i]);
+      var content = _el.html();
+      content = content.replace(':\/\/HOST\/', "://" + window.location.host + "/");
+      _el.html(content)
+    }
+  </script>
+ </body>
 </html>
