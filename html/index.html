@@ -38,7 +38,7 @@
           </div>
         </nav>
   <br>
-  <div class="container">
+  <div class="container diff">
     <div id="compare_versions" style="display: none">
       Compare version:
       <form>
@@ -158,6 +158,10 @@
                 + '    <img width=25px height=25px src="./images/' + img_name + '">' + fileinfo['filename'] + ' '
                 + content_comments
                 + '  </div>'
+                + '  <div class="wdft-table-col mode">m ' + fileinfo['f_mode'] + '</div>'
+                + '  <div class="wdft-table-col size">s ' + fileinfo['f_size'] + '</div>'
+                + '  <div class="wdft-table-col size">cs ' + fileinfo['f_compressedsize'] + '</div>'
+                + '  <div class="wdft-table-col dt">dt: ' + fileinfo['dt'] + '</div>'
                 + '  <div class="wdft-table-col mid">' + fileinfo['state'] + '</div>'
                 + '  <div class="wdft-table-col right ' + fileinfo['state'] + ' " ' + padding + '>'
                 + icon
@@ -193,6 +197,10 @@
             $('#diff_content').html(''
               + '<div class="wdft-table-row info-block">'
               + '  <div class="wdft-table-col info-block left title">Version: ' + result['left_version']['name'] + '</div>'
+              + '  <div class="wdft-table-col info-block mode"></div>'
+              + '  <div class="wdft-table-col info-block size"></div>'
+              + '  <div class="wdft-table-col info-block size"></div>'
+              + '  <div class="wdft-table-col info-block dt"></div>'
               + '  <div class="wdft-table-col info-block mid"></div>'
               + '  <div class="wdft-table-col info-block right title">Version: ' + result['right_version']['name'] + '</div>'
               + '  <div class="wdft-table-col info-block actions"></div>'
@@ -209,6 +217,10 @@
                 + '      <div class="itemfiles plus opened" toggleid="' + _elid + '"></div>'
                 + '      <img width=25px height=25px src="./images/group.png">' + group['title'] + ' '
                 + '  </div>'
+                + '  <div class="wdft-table-col underline mode"></div>'
+                + '  <div class="wdft-table-col underline size"></div>'
+                + '  <div class="wdft-table-col underline size"></div>'
+                + '  <div class="wdft-table-col underline dt"></div>'
                 + '  <div class="wdft-table-col mid underline">new: ' + group['new']  + '<br>missing: ' + group['missing'] + '</div>'
                 + '  <div class="treeitem wdft-table-col right underline">'
                 + '      <div class="itemfiles plus opened" toggleid="' + _elid + '"></div>'

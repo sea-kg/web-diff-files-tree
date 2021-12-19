@@ -83,7 +83,6 @@ WebdiffWsServer::WebdiffWsServer(MySqlStorage *pStorage) {
         }
         channel->deleteContext<VvWsConnectionContext>();
     };
-
 }
 
 WebSocketService *WebdiffWsServer::getService() {

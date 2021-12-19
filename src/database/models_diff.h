@@ -21,6 +21,11 @@ class ModelDiffFile {
         void setFilepath(const std::string &sFilepath);
         void setState(const std::string &sState);
         const std::string &getState() const;
+        void setFileMode(const std::string &sFileMode);
+        void setIsDir(bool bIsDir);
+        void setFileSize(int nFileSize);
+        void setFileCompressedSize(int nFileCompressedSize);
+        void setFileDateTime(const std::string &sDatetime);
         nlohmann::json toJson() const;
 
     private:
@@ -33,6 +38,11 @@ class ModelDiffFile {
         std::string m_sFilename;
         std::string m_sFilepath;
         std::string m_sState;
+        std::string m_sFileMode;
+        bool m_bIsDir;
+        int m_nFileSize;
+        int m_nFileCompressedSize;
+        std::string m_sDatetime;
 };
 
 class ModelDiffGroup {

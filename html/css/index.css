@@ -6,6 +6,9 @@ body {
     padding-left: 10px;
 }
 
+.container.diff {
+    max-width: none !important;
+}
 
 .treeitemname:hover {
     background-color: #f0f0f0;
@@ -204,6 +207,26 @@ body {
 
 .wdft-table-col.info-block.left {
     border-left: 1px solid black;
+}
+
+.wdft-table-col.mode {
+    width:     70px;
+    min-width: 70px;
+    max-width: 70px;
+    font-family: monospace;
+    font-size: 10px;
+}
+
+.wdft-table-col.size {
+    width:     100px;
+    min-width: 100px;
+    max-width: 100px;
+}
+
+.wdft-table-col.dt {
+    width:     100px;
+    min-width: 100px;
+    max-width: 100px;
 }
 
 .wdft-table-col.info-block.mid {

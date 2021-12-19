@@ -9,6 +9,8 @@ ModelDiffFile::ModelDiffFile() {
     m_nVersionId = -1;
     m_nDefineFileId = -1;
     m_nAmountOfChildren = 0;
+    m_nFileSize = 0;
+    m_nFileCompressedSize = 0;
     m_sFilename = "None";
     m_sFilepath = "None";
     m_sState = "None";
@@ -62,6 +64,26 @@ const std::string &ModelDiffFile::getState() const {
     return m_sState;
 }
 
+void ModelDiffFile::setFileMode(const std::string &sFileMode) {
+    m_sFileMode = sFileMode;
+}
+
+void ModelDiffFile::setIsDir(bool bIsDir) {
+    m_bIsDir = bIsDir;
+}
+
+void ModelDiffFile::setFileSize(int nFileSize) {
+    m_nFileSize = nFileSize;
+}
+
+void ModelDiffFile::setFileCompressedSize(int nFileCompressedSize) {
+    m_nFileCompressedSize = nFileCompressedSize;
+}
+
+void ModelDiffFile::setFileDateTime(const std::string &sDatetime) {
+    m_sDatetime = sDatetime;
+}
+
 nlohmann::json ModelDiffFile::toJson() const {
     nlohmann::json jsonRet;
     jsonRet["id"] = "id" + std::to_string(m_nFileId);
@@ -70,8 +92,12 @@ nlohmann::json ModelDiffFile::toJson() const {
     jsonRet["filename"] = m_sFilename;
     jsonRet["amount_of_children"] = m_nAmountOfChildren;
     jsonRet["state"] = m_sState;
+    jsonRet["f_mode"] = m_sFileMode;
+    jsonRet["f_size"] = m_nFileSize;
+    jsonRet["is_dir"] = m_bIsDir;
+    jsonRet["f_compressedsize"] = m_nFileCompressedSize;
+    jsonRet["dt"] = m_sDatetime;
     jsonRet["comments"] = nlohmann::json::array();
-    // jsonRet["comments"] => load_comments($conn, intval($define_file_id)),
     return jsonRet;
 }
 
