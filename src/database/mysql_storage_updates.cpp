@@ -26,6 +26,7 @@ MySqlStorageAllUpdates::MySqlStorageAllUpdates() {
     m_vDatabaseUpdates.push_back(new MySqlStorageUpdate_0007());
     m_vDatabaseUpdates.push_back(new MySqlStorageUpdate_0008());
     m_vDatabaseUpdates.push_back(new MySqlStorageUpdate_0009());
+    m_vDatabaseUpdates.push_back(new MySqlStorageUpdate_0010());
 };
 
 bool MySqlStorageAllUpdates::upgrade(MySqlStorageConnection *pConn) {
@@ -329,5 +330,57 @@ bool MySqlStorageUpdate_0009::apply(MySqlStorageConnection *pConn) {
         WsjcppLog::err(TAG, "Could not modify table webdiff_files (add parent_id)");
         return false;
     }
+    return true;
+}
+
+// ----------------------------------------------------------------------
+// MySqlStorageUpdate_0010
+
+MySqlStorageUpdate_0010::MySqlStorageUpdate_0010() 
+: MySqlStorageUpdate(10) {
+    TAG = "MySqlStorageUpdate_0010";
+}
+
+bool MySqlStorageUpdate_0010::apply(MySqlStorageConnection *pConn) {
+    bool bResult = pConn->executeQuery(
+        " ALTER TABLE webdiff_files ADD dt DATETIME DEFAULT '2000-01-01 00:00:00'; "
+    );
+    if (!bResult) {
+        WsjcppLog::err(TAG, "Could not modify table webdiff_files (add dt)");
+        return false;
+    }
+
+    bResult = pConn->executeQuery(
+        " ALTER TABLE webdiff_files ADD f_size int(11) DEFAULT 0; "
+    );
+    if (!bResult) {
+        WsjcppLog::err(TAG, "Could not modify table webdiff_files (add f_size)");
+        return false;
+    }
+
+    bResult = pConn->executeQuery(
+        " ALTER TABLE webdiff_files ADD f_compress_size int(11) DEFAULT 0; "
+    );
+    if (!bResult) {
+        WsjcppLog::err(TAG, "Could not modify table webdiff_files (add f_compress_size)");
+        return false;
+    }
+
+    bResult = pConn->executeQuery(
+        " ALTER TABLE webdiff_files ADD f_mode VARCHAR(10) DEFAULT '----------'; "
+    );
+    if (!bResult) {
+        WsjcppLog::err(TAG, "Could not modify table webdiff_files (add f_mode)");
+        return false;
+    }
+
+    bResult = pConn->executeQuery(
+        " ALTER TABLE webdiff_files ADD is_dir tinyint(1) DEFAULT 0; "
+    );
+    if (!bResult) {
+        WsjcppLog::err(TAG, "Could not modify table webdiff_files (add is_dir)");
+        return false;
+    }
+
     return true;
 }
