@@ -11,6 +11,7 @@
 #include "hfile.h"
 #include "hstring.h"
 #include "EventLoop.h" // import setTimeout, setInterval
+#include <wsjcpp_core.h>
 
 using namespace hv;
 
@@ -150,15 +151,21 @@ int WebdiffHttpServer::httpApiDiff(HttpRequest* req, HttpResponse* resp) {
     ModelDiffGroups groups;
 
     m_pStorage->getDiff(nLeftVersionId, nRightVersionId, groups);
+
+    long nStartTime = WsjcppCore::getCurrentTimeInMilliseconds();
+    WsjcppLog::info(TAG, "Start prepare response...");
     // resp->json = req->json;
     resp->json["jsonrpc"] = "2.0";
     resp->json["result"] = groups.toJson();
     resp->json["result"]["left_version"] = m_pStorage->getVersionInfo(nLeftVersionId).toJson();
     resp->json["result"]["right_version"] = m_pStorage->getVersionInfo(nRightVersionId).toJson();
     resp->json["url"] = req->url;
+
+    long nElapsedTime = WsjcppCore::getCurrentTimeInMilliseconds() - nStartTime;
+    WsjcppLog::info(TAG, "Json prepared " + std::to_string(nElapsedTime) + " ms");
     return 200;
 }
-        
+
 int WebdiffHttpServer::httpApiFiles(HttpRequest* req, HttpResponse* resp) {
     if (req->content_type != APPLICATION_JSON) {
         return response_status(resp, HTTP_STATUS_BAD_REQUEST);

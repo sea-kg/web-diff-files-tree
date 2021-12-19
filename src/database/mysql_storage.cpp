@@ -202,14 +202,26 @@ std::vector<ModelFile> MySqlStorage::getFiles(int nVersionId, int nGroupId, int 
 
 void MySqlStorage::getDiff(int nLeftVersionId, int nRightVersionId, ModelDiffGroups &diffGroups) {
     MySqlStorageConnection *pConn = getConnection();
-    long nStartTime = WsjcppCore::getCurrentTimeInMilliseconds();
+    long nStartTimeAll = WsjcppCore::getCurrentTimeInMilliseconds();
+
+    // missing
+    long nStartTime = WsjcppCore::getCurrentTimeInMilliseconds();;
     WsjcppLog::info(TAG, "Search missing...");
     pConn->getDiffFiles(nLeftVersionId, nRightVersionId, "missing", diffGroups);
-    WsjcppLog::info(TAG, "Done (" + std::to_string(diffGroups.getFilesLength()) + " files");
+    WsjcppLog::info(TAG, "Done (" + std::to_string(diffGroups.getFilesLength()) + " files)");
+    long nElapsedTime = WsjcppCore::getCurrentTimeInMilliseconds() - nStartTime;
+    WsjcppLog::info(TAG, "Elapsed (search missing) " + std::to_string(nElapsedTime) + " ms");
+
+    // new
+    nStartTime = WsjcppCore::getCurrentTimeInMilliseconds();
     WsjcppLog::info(TAG, "Search new...");
     pConn->getDiffFiles(nRightVersionId, nLeftVersionId, "new", diffGroups);
-    WsjcppLog::info(TAG, "Done (" + std::to_string(diffGroups.getFilesLength()) + " files");
+    WsjcppLog::info(TAG, "Done (" + std::to_string(diffGroups.getFilesLength()) + " files)");
+    nElapsedTime = WsjcppCore::getCurrentTimeInMilliseconds() - nStartTime;
+    WsjcppLog::info(TAG, "Elapsed (search new) " + std::to_string(nElapsedTime) + " ms");
 
+    // search parents
+    nStartTime = WsjcppCore::getCurrentTimeInMilliseconds();
     WsjcppLog::info(TAG, "Search parents...");
     const std::map<int, ModelDiffGroup> &groups = diffGroups.getGroups();
     for (auto it = groups.begin(); it != groups.end(); ++it) {
@@ -224,17 +236,24 @@ void MySqlStorage::getDiff(int nLeftVersionId, int nRightVersionId, ModelDiffGro
             pConn->findAndAddFile(group, nFileId, diffGroups, vIds);
         }
     }
-    WsjcppLog::info(TAG, "Done (" + std::to_string(diffGroups.getFilesLength()) + " files");
+    WsjcppLog::info(TAG, "Done (" + std::to_string(diffGroups.getFilesLength()) + " files)");
+    nElapsedTime = WsjcppCore::getCurrentTimeInMilliseconds() - nStartTime;
+    WsjcppLog::info(TAG, "Elapsed (search parents) " + std::to_string(nElapsedTime) + " ms");
 
+    // search comments
+    nStartTime = WsjcppCore::getCurrentTimeInMilliseconds();
     WsjcppLog::info(TAG, "Search comments...");
     const std::vector<int> &vDefineFilesIds = diffGroups.getFilesDefinesIds();
     for (int i = 0; i < vDefineFilesIds.size(); i++) {
         int nDefineFileId = vDefineFilesIds[i];
         diffGroups.setComments(nDefineFileId, pConn->getComments(nDefineFileId));
     }
-    WsjcppLog::info(TAG, "Done (" + std::to_string(diffGroups.getCommentsLength()) + " comments");
-    long nElapsedTime = WsjcppCore::getCurrentTimeInMilliseconds() - nStartTime;
-    WsjcppLog::info(TAG, "Elapsed " + std::to_string(nElapsedTime) + " ms");
+    WsjcppLog::info(TAG, "Done (" + std::to_string(diffGroups.getCommentsLength()) + " comments)");
+    nElapsedTime = WsjcppCore::getCurrentTimeInMilliseconds() - nStartTime;
+    WsjcppLog::info(TAG, "Elapsed (search comments) " + std::to_string(nElapsedTime) + " ms");
+
+    nElapsedTime = WsjcppCore::getCurrentTimeInMilliseconds() - nStartTimeAll;
+    WsjcppLog::info(TAG, "Elapsed (all) " + std::to_string(nElapsedTime) + " ms");
 }
 
 ModelComment MySqlStorage::addComment(int nDefineFileId, const std::string &sComment) {
