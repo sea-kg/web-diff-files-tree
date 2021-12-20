@@ -336,7 +336,12 @@ void MySqlStorageConnection::getDiffFiles(int nLeftVersionId, int nRightVersionI
         "    t2.name as group_name, "
         "    t0.define_file_id, "
         "    t1.filepath, "
-        "    t1.filename "
+        "    t1.filename, "
+        "    t0.is_dir, "
+        "    t0.f_size, "
+        "    t0.f_compress_size, "
+        "    t0.dt, "
+        "    t0.f_mode "
         "FROM webdiff_files t0 "
         "INNER JOIN webdiff_define_files t1 ON t1.id = t0.define_file_id "
         "INNER JOIN webdiff_file_groups t2 ON t2.id = t0.file_group_id "
@@ -364,6 +369,19 @@ void MySqlStorageConnection::getDiffFiles(int nLeftVersionId, int nRightVersionI
             model.setDefineFileId(paramtoInt(row[5]));
             model.setFilepath(std::string(row[6]));
             model.setFilename(std::string(row[7]));
+            model.setIsDir(paramtoInt(row[8]));
+
+            if (sState == "new") {
+                model.setRightFileSize(paramtoInt(row[9]));
+                model.setRightFileCompressedSize(paramtoInt(row[10]));
+                model.setRightFileDateTime(std::string(row[11]));
+                model.setRightFileMode(std::string(row[12]));
+            } else if (sState == "missing") {
+                model.setLeftFileSize(paramtoInt(row[9]));
+                model.setLeftFileCompressedSize(paramtoInt(row[10]));
+                model.setLeftFileDateTime(std::string(row[11]));
+                model.setLeftFileMode(std::string(row[12]));
+            }
             model.setState(sState);
             // TODO set comments list
             diffGroups.addDiffFile(group, model);

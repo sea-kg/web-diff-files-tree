@@ -9,8 +9,10 @@ ModelDiffFile::ModelDiffFile() {
     m_nVersionId = -1;
     m_nDefineFileId = -1;
     m_nAmountOfChildren = 0;
-    m_nFileSize = 0;
-    m_nFileCompressedSize = 0;
+    m_nLeftFileSize = 0;
+    m_nLeftFileCompressedSize = 0;
+    m_nRightFileSize = 0;
+    m_nRightFileCompressedSize = 0;
     m_sFilename = "None";
     m_sFilepath = "None";
     m_sState = "None";
@@ -64,24 +66,40 @@ const std::string &ModelDiffFile::getState() const {
     return m_sState;
 }
 
-void ModelDiffFile::setFileMode(const std::string &sFileMode) {
-    m_sFileMode = sFileMode;
+void ModelDiffFile::setLeftFileMode(const std::string &sLeftFileMode) {
+    m_sLeftFileMode = sLeftFileMode;
 }
 
 void ModelDiffFile::setIsDir(bool bIsDir) {
     m_bIsDir = bIsDir;
 }
 
-void ModelDiffFile::setFileSize(int nFileSize) {
-    m_nFileSize = nFileSize;
+void ModelDiffFile::setLeftFileSize(int nLeftFileSize) {
+    m_nLeftFileSize = nLeftFileSize;
 }
 
-void ModelDiffFile::setFileCompressedSize(int nFileCompressedSize) {
-    m_nFileCompressedSize = nFileCompressedSize;
+void ModelDiffFile::setLeftFileCompressedSize(int nLeftFileCompressedSize) {
+    m_nLeftFileCompressedSize = nLeftFileCompressedSize;
 }
 
-void ModelDiffFile::setFileDateTime(const std::string &sDatetime) {
-    m_sDatetime = sDatetime;
+void ModelDiffFile::setLeftFileDateTime(const std::string &sLeftDatetime) {
+    m_sLeftDatetime = sLeftDatetime;
+}
+
+void ModelDiffFile::setRightFileMode(const std::string &sRightFileMode) {
+    m_sRightFileMode = sRightFileMode;
+}
+
+void ModelDiffFile::setRightFileSize(int nRightFileSize) {
+    m_nRightFileSize = nRightFileSize;
+}
+
+void ModelDiffFile::setRightFileCompressedSize(int nRightFileCompressedSize) {
+    m_nRightFileCompressedSize = nRightFileCompressedSize;
+}
+
+void ModelDiffFile::setRightFileDateTime(const std::string &sRightDatetime) {
+    m_sRightDatetime = sRightDatetime;
 }
 
 nlohmann::json ModelDiffFile::toJson() const {
@@ -92,11 +110,15 @@ nlohmann::json ModelDiffFile::toJson() const {
     jsonRet["filename"] = m_sFilename;
     jsonRet["amount_of_children"] = m_nAmountOfChildren;
     jsonRet["state"] = m_sState;
-    jsonRet["f_mode"] = m_sFileMode;
-    jsonRet["f_size"] = m_nFileSize;
     jsonRet["is_dir"] = m_bIsDir;
-    jsonRet["f_compressedsize"] = m_nFileCompressedSize;
-    jsonRet["dt"] = m_sDatetime;
+    jsonRet["left_f_mode"] = m_sLeftFileMode;
+    jsonRet["left_f_size"] = m_nLeftFileSize;
+    jsonRet["left_f_compressedsize"] = m_nLeftFileCompressedSize;
+    jsonRet["left_dt"] = m_sLeftDatetime;
+    jsonRet["right_f_mode"] = m_sRightFileMode;
+    jsonRet["right_f_size"] = m_nRightFileSize;
+    jsonRet["right_f_compressedsize"] = m_nRightFileCompressedSize;
+    jsonRet["right_dt"] = m_sRightDatetime;
     jsonRet["comments"] = nlohmann::json::array();
     return jsonRet;
 }

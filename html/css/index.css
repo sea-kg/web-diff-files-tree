@@ -166,7 +166,7 @@ body {
 }
 
 .wdft-table-col.left, .wdft-table-col.right {
-    width: calc(50% - 100px);
+    /*width: calc(50% - 100px);*/
 }
 
 .wdft-table-col.actions {
@@ -209,24 +209,40 @@ body {
     border-left: 1px solid black;
 }
 
-.wdft-table-col.mode {
+.wdft-table-col.file-mode {
     width:     70px;
     min-width: 70px;
     max-width: 70px;
     font-family: monospace;
     font-size: 10px;
+    padding: 2px;
 }
 
-.wdft-table-col.size {
-    width:     100px;
-    min-width: 100px;
-    max-width: 100px;
+.wdft-table-col.file-size {
+    /*width:     70px;
+    min-width: 70px;
+    max-width: 70px;*/
+    font-family: monospace;
+    font-size: 10px;
+    padding: 2px;
+}
+
+.wdft-table-col.compressed-size {
+    /*width:     70px;
+    min-width: 70px;
+    max-width: 70px;*/
+    font-family: monospace;
+    font-size: 10px;
+    padding: 2px;
 }
 
 .wdft-table-col.dt {
-    width:     100px;
-    min-width: 100px;
-    max-width: 100px;
+    /*width:     70px;
+    min-width: 70px;
+    max-width: 70px;*/
+    font-family: monospace;
+    font-size: 10px;
+    padding: 2px;
 }
 
 .wdft-table-col.info-block.mid {
