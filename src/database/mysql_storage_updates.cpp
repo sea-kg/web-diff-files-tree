@@ -27,6 +27,8 @@ MySqlStorageAllUpdates::MySqlStorageAllUpdates() {
     m_vDatabaseUpdates.push_back(new MySqlStorageUpdate_0008());
     m_vDatabaseUpdates.push_back(new MySqlStorageUpdate_0009());
     m_vDatabaseUpdates.push_back(new MySqlStorageUpdate_0010());
+    m_vDatabaseUpdates.push_back(new MySqlStorageUpdate_0011());
+    
 };
 
 bool MySqlStorageAllUpdates::upgrade(MySqlStorageConnection *pConn) {
@@ -382,5 +384,41 @@ bool MySqlStorageUpdate_0010::apply(MySqlStorageConnection *pConn) {
         return false;
     }
 
+    return true;
+}
+
+
+// ----------------------------------------------------------------------
+// MySqlStorageUpdate_0011
+
+MySqlStorageUpdate_0011::MySqlStorageUpdate_0011() 
+: MySqlStorageUpdate(11) {
+    TAG = "MySqlStorageUpdate_0011";
+}
+
+bool MySqlStorageUpdate_0011::apply(MySqlStorageConnection *pConn) {
+    bool bResult = pConn->executeQuery(
+        " CREATE INDEX webdiff_files_define_file_id ON webdiff_files(define_file_id); "
+    );
+    if (!bResult) {
+        WsjcppLog::err(TAG, "Could not create index webdiff_files_define_file_id");
+        return false;
+    }
+
+    bResult = pConn->executeQuery(
+        " CREATE INDEX webdiff_files_define_file_id_version_id ON webdiff_files(define_file_id, version_id); "
+    );
+    if (!bResult) {
+        WsjcppLog::err(TAG, "Could not create index webdiff_files_define_file_id_version_id");
+        return false;
+    }
+
+    bResult = pConn->executeQuery(
+        " CREATE INDEX webdiff_files_define_file_id_ver_group ON webdiff_files(define_file_id, version_id, file_group_id); "
+    );
+    if (!bResult) {
+        WsjcppLog::err(TAG, "Could not create index webdiff_files_define_file_id_ver_group");
+        return false;
+    }
     return true;
 }

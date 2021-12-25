@@ -104,5 +104,13 @@ class MySqlStorageUpdate_0010 : public MySqlStorageUpdate {
         std::string TAG;
 };
 
+class MySqlStorageUpdate_0011 : public MySqlStorageUpdate {
+    public:
+        MySqlStorageUpdate_0011();
+        virtual bool apply(MySqlStorageConnection *) override;
+    private:
+        std::string TAG;
+};
+
 #endif // MYSQL_STORAGE_UPDATES_H
 
