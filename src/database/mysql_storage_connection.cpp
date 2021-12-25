@@ -345,9 +345,8 @@ void MySqlStorageConnection::getDiffFiles(int nLeftVersionId, int nRightVersionI
         "FROM webdiff_files t0 "
         "INNER JOIN webdiff_define_files t1 ON t1.id = t0.define_file_id "
         "INNER JOIN webdiff_file_groups t2 ON t2.id = t0.file_group_id "
-        "WHERE "
-        "  version_id = " + std::to_string(nLeftVersionId) + 
-        "  AND define_file_id NOT IN (SELECT define_file_id FROM webdiff_files t10 WHERE version_id = " + std::to_string(nRightVersionId) + " AND t0.file_group_id = t10.file_group_id); "
+        "LEFT JOIN webdiff_files t3 ON t0.define_file_id = t3.define_file_id AND t3.version_id = " + std::to_string(nRightVersionId) + " AND t0.file_group_id = t3.file_group_id "
+        "WHERE t0.version_id = " + std::to_string(nLeftVersionId) + " AND t3.id is null"
     ;
     // WsjcppLog::info(TAG, sQuery);
     if (mysql_query(m_pConnection, sQuery.c_str())) {
